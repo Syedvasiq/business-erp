@@ -13,6 +13,7 @@ import {
   BarChart2,
   LayoutDashboard,
   ShieldCheck,
+  KeyRound,
   LogOut,
   Menu,
   X,
@@ -41,6 +42,7 @@ const nav: NavItem[] = [
   { href: "/purchases",           label: "Purchases",        icon: ShoppingCart,    roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT", "VIEWER"] },
   { href: "/accounting",          label: "Accounting",       icon: BarChart2,       roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"] },
   { href: "/admin/users",         label: "User Management",  icon: ShieldCheck,     roles: ["SUPER_ADMIN", "ADMIN"] },
+  { href: "/admin/permissions",    label: "Roles & Permissions", icon: KeyRound,     roles: ["SUPER_ADMIN", "ADMIN"] },
   { href: "/settings",            label: "Settings",         icon: Settings,        roles: ["SUPER_ADMIN", "ADMIN"] },
 ];
 

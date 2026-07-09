@@ -274,6 +274,21 @@ model Commission {
   createdAt   DateTime @default(now())
 }
 
+// ─── ROLE PERMISSIONS ────────────────────────────────────────────────────────
+
+model RolePermission {
+  id         String   @id @default(cuid())
+  role       UserRole
+  module     String   // e.g. "customers", "sales", "inventory"
+  canView    Boolean  @default(false)
+  canCreate  Boolean  @default(false)
+  canEdit    Boolean  @default(false)
+  canDelete  Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([role, module])
+}
+
 // ─── USERS / ADMIN ───────────────────────────────────────────────────────────
 
 enum UserRole {
