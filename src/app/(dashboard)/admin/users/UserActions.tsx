@@ -70,7 +70,8 @@ export function UserActions(props?: {
         password: "",
       });
     }
-  }, [editOpen, props?.userId, props?.userName, props?.userEmail, props?.userRole, editForm]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editOpen]);
 
   const onCreateSubmit = async (data: CreateForm) => {
     const res = await fetch("/api/users", {
