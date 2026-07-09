@@ -149,6 +149,21 @@ function NavContent({ user, path, onClose }: { user: SessionUser; path: string; 
             Sign Out
           </button>
         </div>
+
+        {/* Whizfortune credit */}
+        <div className="mt-3 text-center">
+          <p className="text-[10px] text-slate-400">
+            Designed &amp; Developed by{" "}
+            <a
+              href="https://whizfortune.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-slate-500 transition hover:text-slate-800"
+            >
+              Whizfortune
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
