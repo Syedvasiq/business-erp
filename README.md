@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ERP Dubai — Unix Solutions
 
-## Getting Started
+UAE FTA-Compliant Minimal ERP built with **Next.js 14**, **TypeScript**, **Tailwind CSS**, and **PostgreSQL** (Prisma ORM).
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Modules
+
+| Module | Features |
+|---|---|
+| Customers | B2B/B2C CRM, 15-digit TRN validation, live AR ledger |
+| Suppliers | Vendor directory, Mainland / Free Zone / International toggle, RCM auto-detection |
+| Inventory | Item master, SKU/barcode, Weighted Average Costing, tax classification |
+| Sales | FTA-compliant sequential invoices, Tax/Simplified Invoice, multi-currency, VAT 5% |
+| Purchases | PO receipt, Input VAT recoup, RCM self-assessment, customs/shipping landing cost |
+| Commissions | Agent/broker directory, flexible payout basis, VAT on external commissions |
+| Accounting | Live P&L, VAT Form 201 by Emirate, Corporate Tax planner (0%/9% thresholds) |
+
+---
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 App Router, TypeScript, Tailwind CSS v4
+- **Backend**: Next.js API Routes (Route Handlers)
+- **Database**: PostgreSQL via Prisma ORM
+- **Double-Entry Engine**: Every transaction posts balanced journal entries (DR = CR)
+- **Hosting**: AWS `me-central-1` (UAE) recommended
+
+---
+
+## Setup
+
+### 1. Configure Database
+Edit `.env`:
+```
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/erp_dubai?schema=public"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Run Migrations
+```bash
+npm run db:migrate
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Seed Chart of Accounts
+```bash
+npm run db:seed
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Start Development Server
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Chart of Accounts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Code | Account | Type |
+|---|---|---|
+| 1000 | Cash & Bank | Asset |
+| 1100 | Accounts Receivable | Asset |
+| 1200 | Input VAT Recoverable | Asset |
+| 1300 | Inventory | Asset |
+| 2000 | Accounts Payable | Liability |
+| 2100 | Output VAT Payable | Liability |
+| 2200 | RCM VAT Payable | Liability |
+| 2300 | Commission Payable | Liability |
+| 4000 | Sales Revenue | Revenue |
+| 5000 | Cost of Goods Sold | Expense |
+| 5100 | Commission Expense | Expense |
+| 5200 | Import & Customs Expense | Expense |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## UAE Compliance Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **VAT**: 5% standard, 0% zero-rated (exports), exempt categories supported
+- **RCM**: Auto-applied for Free Zone and International suppliers
+- **TRN**: 15-digit validation on all customer/supplier forms
+- **Invoices**: Sequential numbering, "Tax Invoice" / "Simplified Tax Invoice" labels
+- **Corporate Tax**: 0% up to AED 375,000 | 9% above | AED 3M Small Business Relief
+- **Audit Trail**: Hard deletes blocked — cancellations post reverse journal entries

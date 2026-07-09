@@ -1,0 +1,375 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum VendorType {
+  MAINLAND
+  FREE_ZONE
+  INTERNATIONAL
+}
+
+enum TaxType {
+  STANDARD
+  ZERO_RATED
+  EXEMPT
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  PARTIALLY_PAID
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  RECEIVED
+  CANCELLED
+}
+
+enum CommissionBasis {
+  GROSS_SALE
+  NET_ITEMS
+  AFTER_PAYMENT
+}
+
+enum JournalEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum CurrencyCode {
+  AED
+  USD
+  EUR
+  GBP
+  SAR
+}
+
+// ─── CHART OF ACCOUNTS ───────────────────────────────────────────────────────
+
+model Account {
+  id          String      @id @default(cuid())
+  code        String      @unique
+  name        String
+  type        AccountType
+  parentId    String?
+  parent      Account?    @relation("AccountTree", fields: [parentId], references: [id])
+  children    Account[]   @relation("AccountTree")
+  journalLines JournalLine[]
+  createdAt   DateTime    @default(now())
+}
+
+// ─── JOURNAL (DOUBLE-ENTRY) ───────────────────────────────────────────────────
+
+model Journal {
+  id          String        @id @default(cuid())
+  reference   String        @unique
+  description String
+  date        DateTime
+  locked      Boolean       @default(false)
+  lines       JournalLine[]
+  createdAt   DateTime      @default(now())
+}
+
+model JournalLine {
+  id        String           @id @default(cuid())
+  journalId String
+  journal   Journal          @relation(fields: [journalId], references: [id])
+  accountId String
+  account   Account          @relation(fields: [accountId], references: [id])
+  type      JournalEntryType
+  amount    Decimal          @db.Decimal(18, 2)
+  currency  CurrencyCode     @default(AED)
+  aedAmount Decimal          @db.Decimal(18, 2)
+}
+
+// ─── CUSTOMERS ───────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String    @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  trn       String?   // 15-digit Tax Registration Number
+  emirate   String?
+  address   String?
+  isB2B     Boolean   @default(false)
+  invoices  Invoice[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// ─── SUPPLIERS ───────────────────────────────────────────────────────────────
+
+model Supplier {
+  id             String              @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  trn            String?
+  vendorType     VendorType          @default(MAINLAND)
+  currency       CurrencyCode        @default(AED)
+  purchaseOrders PurchaseOrder[]
+  items          Item[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+// ─── INVENTORY ───────────────────────────────────────────────────────────────
+
+model Item {
+  id               String         @id @default(cuid())
+  name             String
+  sku              String         @unique
+  barcode          String?
+  unitCost         Decimal        @db.Decimal(18, 2)
+  retailPrice      Decimal        @db.Decimal(18, 2)
+  taxType          TaxType        @default(STANDARD)
+  stockQty         Decimal        @default(0) @db.Decimal(18, 3)
+  weightedAvgCost  Decimal        @default(0) @db.Decimal(18, 2)
+  supplierId       String?
+  supplier         Supplier?      @relation(fields: [supplierId], references: [id])
+  invoiceLines     InvoiceLine[]
+  purchaseLines    PurchaseOrderLine[]
+  allocations      StockAllocation[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// ─── STOCK ALLOCATIONS ────────────────────────────────────────────────────────
+
+model StockAllocation {
+  id           String   @id @default(cuid())
+  itemId       String
+  item         Item     @relation(fields: [itemId], references: [id])
+  userId       String
+  allocatedQty Decimal  @default(0) @db.Decimal(18, 3)
+  soldQty      Decimal  @default(0) @db.Decimal(18, 3)
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([itemId, userId])
+}
+
+// ─── SALES / INVOICES ─────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(cuid())
+  number         String        @unique
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  status         InvoiceStatus @default(DRAFT)
+  currency       CurrencyCode  @default(AED)
+  exchangeRate   Decimal       @default(1) @db.Decimal(18, 6)
+  subtotalAed    Decimal       @db.Decimal(18, 2)
+  vatAmount      Decimal       @db.Decimal(18, 2)
+  totalAed       Decimal       @db.Decimal(18, 2)
+  emirate        String?
+  isSimplified   Boolean       @default(false)
+  lines          InvoiceLine[]
+  commissions    Commission[]
+  journalRef     String?
+  assignedUserId String?
+  issueDate      DateTime      @default(now())
+  dueDate        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model InvoiceLine {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+  itemId       String
+  item         Item     @relation(fields: [itemId], references: [id])
+  qty          Decimal  @db.Decimal(18, 3)
+  unitPrice    Decimal  @db.Decimal(18, 2)
+  discountPct  Decimal  @default(0) @db.Decimal(5, 2)
+  discountAmt  Decimal  @default(0) @db.Decimal(18, 2)
+  taxType      TaxType
+  vatAmount    Decimal  @db.Decimal(18, 2)
+  lineTotal    Decimal  @db.Decimal(18, 2)
+  cogsCost     Decimal  @db.Decimal(18, 2)
+}
+
+// ─── PURCHASES ───────────────────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  number         String              @unique
+  supplierId     String
+  supplier       Supplier            @relation(fields: [supplierId], references: [id])
+  status         PurchaseOrderStatus @default(DRAFT)
+  currency       CurrencyCode        @default(AED)
+  exchangeRate   Decimal             @default(1) @db.Decimal(18, 6)
+  subtotalAed    Decimal             @db.Decimal(18, 2)
+  inputVat       Decimal             @db.Decimal(18, 2)
+  customsDuty    Decimal             @default(0) @db.Decimal(18, 2)
+  shippingCost   Decimal             @default(0) @db.Decimal(18, 2)
+  totalAed       Decimal             @db.Decimal(18, 2)
+  isRcm          Boolean             @default(false)
+  journalRef     String?
+  lines          PurchaseOrderLine[]
+  orderDate      DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+model PurchaseOrderLine {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  itemId          String
+  item            Item          @relation(fields: [itemId], references: [id])
+  qty             Decimal       @db.Decimal(18, 3)
+  unitCost        Decimal       @db.Decimal(18, 2)
+  vatAmount       Decimal       @db.Decimal(18, 2)
+  lineTotal       Decimal       @db.Decimal(18, 2)
+}
+
+// ─── COMMISSIONS ─────────────────────────────────────────────────────────────
+
+model Agent {
+  id          String          @id @default(cuid())
+  name        String
+  email       String?
+  isInternal  Boolean         @default(true)
+  trn         String?
+  rate        Decimal         @db.Decimal(5, 2)
+  basis       CommissionBasis @default(GROSS_SALE)
+  commissions Commission[]
+  createdAt   DateTime        @default(now())
+}
+
+model Commission {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  baseAmount  Decimal  @db.Decimal(18, 2)
+  rate        Decimal  @db.Decimal(5, 2)
+  vatOnComm   Decimal  @default(0) @db.Decimal(18, 2)
+  totalPayout Decimal  @db.Decimal(18, 2)
+  isPaid      Boolean  @default(false)
+  journalRef  String?
+  createdAt   DateTime @default(now())
+}
+
+// ─── USERS / ADMIN ───────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  ACCOUNTANT
+  SALES
+  VIEWER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(VIEWER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── EXPENSES ────────────────────────────────────────────────────────────────
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  SALARIES
+  TRANSPORT
+  MARKETING
+  OFFICE_SUPPLIES
+  BANK_CHARGES
+  INSURANCE
+  MAINTENANCE
+  OTHER
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  description String
+  category    ExpenseCategory @default(OTHER)
+  amount      Decimal         @db.Decimal(18, 2)
+  date        DateTime        @default(now())
+  reference   String?
+  journalRef  String?
+  createdAt   DateTime        @default(now())
+}
+
+// ─── PARTNERS ────────────────────────────────────────────────────────────────
+
+model Partner {
+  id          String              @id @default(cuid())
+  name        String
+  email       String?
+  sharePercent Decimal            @db.Decimal(5, 2)   // e.g. 50.00 = 50%
+  withdrawals PartnerWithdrawal[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model PartnerWithdrawal {
+  id          String   @id @default(cuid())
+  partnerId   String
+  partner     Partner  @relation(fields: [partnerId], references: [id])
+  amount      Decimal  @db.Decimal(18, 2)
+  note        String?
+  journalRef  String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+// ─── COMPANY SETTINGS ────────────────────────────────────────────────────────
+
+model CompanySetting {
+  id               String  @id @default("singleton")
+  companyName      String  @default("")
+  trn              String  @default("")
+  address          String  @default("")
+  emirate          String  @default("Dubai")
+  phone            String  @default("")
+  email            String  @default("")
+  logoUrl          String  @default("")
+  defaultCurrency  String  @default("AED")
+  invoicePrefix    String  @default("INV")
+  poPrefix         String  @default("PO")
+  paymentTermsDays Int     @default(30)
+  vatRate          Decimal @default(5) @db.Decimal(5, 2)
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── EXCHANGE RATES ───────────────────────────────────────────────────────────
+
+model ExchangeRate {
+  id       String       @id @default(cuid())
+  currency CurrencyCode
+  rate     Decimal      @db.Decimal(18, 6)
+  date     DateTime     @default(now())
+
+  @@unique([currency, date])
+}
