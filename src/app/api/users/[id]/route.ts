@@ -15,6 +15,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const data: Record<string, unknown> = {};
 
   if (body.name) data.name = body.name;
+  if (body.email) data.email = body.email.toLowerCase();
   if (body.role) data.role = body.role;
   if (typeof body.isActive === "boolean") data.isActive = body.isActive;
   if (body.password) data.password = await bcrypt.hash(body.password, 12);

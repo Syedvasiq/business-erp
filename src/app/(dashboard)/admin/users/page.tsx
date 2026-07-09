@@ -282,6 +282,7 @@ export default async function UsersPage() {
                         <UserActions
                           userId={u.id}
                           userName={u.name}
+                          userEmail={u.email}
                           userRole={u.role}
                           isActive={u.isActive}
                         />
@@ -335,6 +336,7 @@ export default async function UsersPage() {
                 <UserActions
                   userId={u.id}
                   userName={u.name}
+                  userEmail={u.email}
                   userRole={u.role}
                   isActive={u.isActive}
                 />

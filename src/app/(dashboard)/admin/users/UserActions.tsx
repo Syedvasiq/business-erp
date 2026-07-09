@@ -18,6 +18,7 @@ type CreateForm = {
 
 type EditForm = {
   name: string;
+  email: string;
   role: string;
   password: string;
 };
@@ -33,6 +34,7 @@ const ROLES = [
 export function UserActions(props?: {
   userId?: string;
   userName?: string;
+  userEmail?: string;
   userRole?: string;
   isActive?: boolean;
 }) {
@@ -53,6 +55,7 @@ export function UserActions(props?: {
   const editForm = useForm<EditForm>({
     defaultValues: {
       name: props?.userName ?? "",
+      email: props?.userEmail ?? "",
       role: props?.userRole ?? "VIEWER",
       password: "",
     },
@@ -62,11 +65,12 @@ export function UserActions(props?: {
     if (editOpen && props?.userId) {
       editForm.reset({
         name: props.userName ?? "",
+        email: props.userEmail ?? "",
         role: props.userRole ?? "VIEWER",
         password: "",
       });
     }
-  }, [editOpen, props?.userId, props?.userName, props?.userRole, editForm]);
+  }, [editOpen, props?.userId, props?.userName, props?.userEmail, props?.userRole, editForm]);
 
   const onCreateSubmit = async (data: CreateForm) => {
     const res = await fetch("/api/users", {
@@ -93,12 +97,10 @@ export function UserActions(props?: {
   const onEditSubmit = async (data: EditForm) => {
     const payload: any = {
       name: data.name,
+      email: data.email,
       role: data.role,
     };
-
-    if (data.password) {
-      payload.password = data.password;
-    }
+    if (data.password) payload.password = data.password;
 
     await fetch(`/api/users/${props?.userId}`, {
       method: "PUT",
@@ -174,6 +176,13 @@ export function UserActions(props?: {
                       label="Full Name"
                       {...editForm.register("name", { required: "Required" })}
                       error={editForm.formState.errors.name?.message}
+                    />
+
+                    <Input
+                      label="Email Address"
+                      type="email"
+                      {...editForm.register("email", { required: "Required" })}
+                      error={editForm.formState.errors.email?.message}
                     />
 
                     <Select
