@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { formatAED } from "@/lib/utils";
-import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert, ChevronDown, Eye } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert, ChevronDown, Eye, Pencil } from "lucide-react";
 
 type LineItem = {
   itemId: string;
@@ -407,6 +407,239 @@ export function PurchaseActions() {
               >
                 {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                 {isSubmitting ? "Posting..." : "Receive Purchase"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+// ── Purchase Order edit button ─────────────────────────────────────────────
+export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
+  const [open, setOpen] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+  const [vatRate, setVatRate] = useState(0.05);
+  const [lineUoms, setLineUoms] = useState<string[]>([]);
+  const router = useRouter();
+
+  const { register, handleSubmit, control, watch, reset, setValue, formState: { isSubmitting } } =
+    useForm<FormData>({
+      defaultValues: {
+        supplierId: "", currency: "AED", exchangeRate: "1",
+        customsDuty: "0", shippingCost: "0",
+        lines: [{ itemId: "", qty: "1", unitCost: "" }],
+      },
+    });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "lines" });
+  const watchedLines = watch("lines");
+  const watchedSupplier = watch("supplierId");
+  const watchedCustomsDuty = watch("customsDuty");
+  const watchedShippingCost = watch("shippingCost");
+  const watchedCurrency = watch("currency");
+
+  const handleOpen = async () => {
+    setOpen(true);
+    const [suppliersData, itemsData, settingsData, poData] = await Promise.all([
+      fetch("/api/suppliers").then((r) => r.json()),
+      fetch("/api/inventory").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()),
+      fetch(`/api/purchases/${purchaseId}`).then((r) => r.json()),
+    ]);
+    setSuppliers(suppliersData);
+    setItems(itemsData);
+    if (settingsData?.vatRate != null) setVatRate(Number(settingsData.vatRate) / 100);
+    setLineUoms(poData.lines.map((l: any) => l.item?.uom ?? ""));
+    reset({
+      supplierId: poData.supplierId,
+      currency: poData.currency,
+      exchangeRate: String(poData.exchangeRate),
+      customsDuty: String(poData.customsDuty),
+      shippingCost: String(poData.shippingCost),
+      orderDate: new Date(poData.orderDate).toISOString().slice(0, 10),
+      lines: poData.lines.map((l: any) => ({
+        itemId: l.itemId,
+        qty: String(l.qty),
+        unitCost: String(l.unitCost),
+      })),
+    } as any);
+  };
+
+  useEffect(() => {
+    if (!open || watchedCurrency === "AED") { if (watchedCurrency === "AED") setValue("exchangeRate", "1"); return; }
+    fetch(`/api/exchange-rates?currency=${watchedCurrency}`)
+      .then((r) => r.json()).then((d) => { if (d.rate) setValue("exchangeRate", Number(d.rate).toFixed(2)); })
+      .catch(() => {});
+  }, [watchedCurrency, open]);
+
+  const selectedSupplier = suppliers.find((s) => s.id === watchedSupplier);
+  const isRcm = selectedSupplier?.vendorType !== "MAINLAND";
+
+  const calcTotals = () => {
+    let subtotal = 0;
+    watchedLines.forEach((line) => { subtotal += Number(line.qty || 0) * Number(line.unitCost || 0); });
+    const customsDuty = Number(watchedCustomsDuty || 0);
+    const shippingCost = Number(watchedShippingCost || 0);
+    const inputVat = isRcm ? 0 : subtotal * vatRate;
+    return { subtotal, inputVat, customsDuty, shippingCost, total: subtotal + inputVat + customsDuty + shippingCost };
+  };
+  const { subtotal, inputVat, customsDuty, shippingCost, total } = calcTotals();
+
+  const onSubmit = async (data: any) => {
+    const res = await fetch(`/api/purchases/${purchaseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...data,
+        exchangeRate: Number(data.exchangeRate),
+        customsDuty: Number(data.customsDuty),
+        shippingCost: Number(data.shippingCost),
+        lines: data.lines.map((l: any) => ({ ...l, qty: Number(l.qty), unitCost: Number(l.unitCost) })),
+      }),
+    });
+    if (res.ok) { setOpen(false); router.refresh(); }
+  };
+
+  return (
+    <>
+      <button
+        onClick={handleOpen}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-blue-50 hover:text-blue-700"
+        aria-label="Edit purchase order"
+      >
+        <Pencil size={14} />
+      </button>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="" className="max-w-4xl">
+        <div className="w-full">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                <Pencil size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">Edit Purchase Order</h2>
+                <p className="mt-1 text-sm text-slate-500">Update supplier, date, lines, and costs. Journal and stock will be recalculated.</p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-5 sm:px-6 sm:py-6">
+            <div className="space-y-5">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Supplier & date</p>
+                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <Select label="Supplier *"
+                    options={[{ value: "", label: "Select supplier..." }, ...suppliers.map((s) => ({ value: s.id, label: `${s.name} (${s.vendorType})` }))]}
+                    {...register("supplierId", { required: true })} />
+                  <Select label="Currency"
+                    options={["AED","USD","EUR","GBP","SAR"].map((c) => ({ value: c, label: c }))}
+                    {...register("currency")} />
+                  <Input label="Order Date *" type="date" {...(register as any)("orderDate", { required: true })} />
+                </div>
+                {isRcm && selectedSupplier && (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 text-amber-700"><ShieldAlert size={18} /></div>
+                      <div>
+                        <p className="text-sm font-semibold text-amber-800">Reverse Charge Mechanism applies</p>
+                        <p className="mt-1 text-sm text-amber-700">VAT is self-assessed for this supplier type.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Purchase settings</p>
+                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <Input label="Exchange Rate" type="text" inputMode="decimal" placeholder="1" {...register("exchangeRate")} />
+                  <Input label="Customs Duty (AED)" type="text" inputMode="decimal" {...register("customsDuty")} />
+                  <Input label="Shipping Cost (AED)" type="text" inputMode="decimal" {...register("shippingCost")} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Line items</p>
+                  <button type="button"
+                    onClick={() => { append({ itemId: "", qty: "1", unitCost: "" }); setLineUoms((p) => [...p, ""]); }}
+                    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    <Plus size={14} /> Add Line
+                  </button>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {fields.map((field, i) => (
+                    <div key={field.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.6fr_0.7fr_0.9fr_auto] md:items-end">
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-slate-700">Item</label>
+                          <select
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
+                            {...register(`lines.${i}.itemId`)}
+                            onChange={(e) => {
+                              register(`lines.${i}.itemId`).onChange(e);
+                              const item = items.find((it) => it.id === e.target.value);
+                              setLineUoms((prev) => { const next = [...prev]; next[i] = item?.uom ?? ""; return next; });
+                            }}
+                          >
+                            <option value="">Select item...</option>
+                            {items.map((item) => (
+                              <option key={item.id} value={item.id}>{item.sku} — {item.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-slate-700">Qty</label>
+                          <div className="flex items-center gap-1.5">
+                            <input type="text" inputMode="decimal"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
+                              {...register(`lines.${i}.qty`)} />
+                            {lineUoms[i] && (
+                              <span className="shrink-0 rounded-lg bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">{lineUoms[i]}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-slate-700">Unit Cost</label>
+                          <input type="text" inputMode="decimal"
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
+                            {...register(`lines.${i}.unitCost`)} />
+                        </div>
+                        <button type="button" onClick={() => remove(i)}
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-white text-red-500 transition hover:bg-red-50">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Totals</p>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="font-medium text-slate-700">{formatAED(subtotal)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Input VAT {isRcm ? "(RCM)" : `(${(vatRate*100).toFixed(0)}%)`}</span><span className="font-medium text-slate-700">{formatAED(inputVat)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Customs Duty</span><span className="font-medium text-slate-700">{formatAED(customsDuty)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Shipping Cost</span><span className="font-medium text-slate-700">{formatAED(shippingCost)}</span></div>
+                  <div className="flex justify-between border-t border-slate-200 pt-3">
+                    <span className="font-semibold text-slate-900">Total AED</span>
+                    <span className="font-semibold text-slate-900">{formatAED(total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)} className="min-h-[44px] rounded-2xl">Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>
