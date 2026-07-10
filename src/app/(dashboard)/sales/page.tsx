@@ -7,7 +7,6 @@ import {
   Wallet,
   ReceiptText,
   Clock3,
-  ChevronRight,
   Printer,
 } from "lucide-react";
 
@@ -217,7 +216,9 @@ export default async function SalesPage() {
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Status
                   </th>
-                  <th className="px-6 py-4" />
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -228,9 +229,12 @@ export default async function SalesPage() {
                     className="border-b border-slate-100 transition hover:bg-slate-50/80"
                   >
                     <td className="px-6 py-4">
-                      <span className="font-mono text-sm font-semibold text-sky-700">
+                      <Link
+                        href={`/sales/${inv.id}/invoice`}
+                        className="font-mono text-sm font-semibold text-sky-700 hover:text-sky-900 hover:underline"
+                      >
                         {inv.number}
-                      </span>
+                      </Link>
                     </td>
 
                     <td className="px-6 py-4">
@@ -266,13 +270,6 @@ export default async function SalesPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/sales/${inv.id}/invoice`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-sky-600 hover:text-sky-800"
-                        >
-                          <Printer size={13} />
-                          View
-                        </Link>
                         {inv.status !== "CANCELLED" && (
                           <EditInvoiceButton invoiceId={inv.id} />
                         )}
@@ -347,11 +344,9 @@ export default async function SalesPage() {
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/sales/${inv.id}/invoice`}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:text-sky-800"
+                    className="font-mono text-sm font-semibold text-sky-700 hover:underline"
                   >
-                    <Printer size={14} />
-                    View Invoice
-                    <ChevronRight size={14} />
+                    {inv.number}
                   </Link>
                   {inv.status !== "CANCELLED" && (
                     <EditInvoiceButton invoiceId={inv.id} />

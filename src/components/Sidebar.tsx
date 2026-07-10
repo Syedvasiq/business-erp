@@ -191,6 +191,16 @@ export function Sidebar({ user, permissions }: { user: SessionUser; permissions:
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) setCollapsed(saved === "true");
+  }, []);
+
+  const toggleCollapsed = (val: boolean) => {
+    setCollapsed(val);
+    localStorage.setItem("sidebar-collapsed", String(val));
+  };
+
+  useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
@@ -265,7 +275,7 @@ export function Sidebar({ user, permissions }: { user: SessionUser; permissions:
             {/* Toggle button at top */}
             <div className="flex items-center justify-center border-b border-slate-200/80 py-[18px]">
               <button
-                onClick={() => setCollapsed(false)}
+                onClick={() => toggleCollapsed(false)}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
                 title="Expand sidebar"
               >
@@ -318,7 +328,7 @@ export function Sidebar({ user, permissions }: { user: SessionUser; permissions:
             <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-5">
               <h1 className="text-lg font-semibold tracking-tight text-slate-900">Unix Solutions</h1>
               <button
-                onClick={() => setCollapsed(true)}
+                onClick={() => toggleCollapsed(true)}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
                 title="Collapse sidebar"
               >
