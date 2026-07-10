@@ -107,7 +107,7 @@ function InvoiceTypeBadge({ isSimplified }: { isSimplified: boolean }) {
 export default async function SalesPage() {
   const invoices = await prisma.invoice.findMany({
     include: { customer: true },
-    orderBy: { issueDate: "desc" },
+    orderBy: { id: "asc" },
   });
 
   const mappedInvoices = invoices.map((inv) => ({

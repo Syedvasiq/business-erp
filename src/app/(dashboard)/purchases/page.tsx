@@ -104,7 +104,7 @@ function TaxModeBadge({ isRcm }: { isRcm: boolean }) {
 export default async function PurchasesPage() {
   const orders = await prisma.purchaseOrder.findMany({
     include: { supplier: true },
-    orderBy: { orderDate: "desc" },
+    orderBy: { id: "asc" },
   });
 
   const mappedOrders = orders.map((po) => ({
