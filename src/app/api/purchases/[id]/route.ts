@@ -18,9 +18,39 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
 
   // Status-only update (from PurchaseStatusButton)
-  if (body.status && !body.lines) {
+  if (body.status && !body.lines && !body.payment) {
     const po = await prisma.purchaseOrder.update({ where: { id }, data: { status: body.status } });
     return NextResponse.json(po);
+  }
+
+  // Payment recording (from MarkPaidButton on payables)
+  if (body.payment && !body.lines) {
+    const po = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id } });
+    await prisma.payment.create({
+      data: {
+        purchaseOrderId: id,
+        method:        body.payment.method,
+        amount:        body.payment.amount,
+        date:          new Date(body.payment.date),
+        bankName:      body.payment.bankName      ?? null,
+        transactionId: body.payment.transactionId ?? null,
+        chequeNumber:  body.payment.chequeNumber  ?? null,
+        chequeDate:    body.payment.chequeDate ? new Date(body.payment.chequeDate) : null,
+        chequeBank:    body.payment.chequeBank    ?? null,
+        notes:         body.payment.notes         ?? null,
+      },
+    });
+    await postJournal(
+      `PAY-PO-${po.number}-${Date.now()}`,
+      `Payment for PO ${po.number}`,
+      new Date(body.payment.date),
+      [
+        { accountCode: "2000", type: "DEBIT",  amount: body.payment.amount },
+        { accountCode: "1000", type: "CREDIT", amount: body.payment.amount },
+      ]
+    );
+    const updated = await prisma.purchaseOrder.update({ where: { id }, data: { status: "PAID" } });
+    return NextResponse.json(updated);
   }
 
   // Full edit — reverse old journal, recalculate, repost

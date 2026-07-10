@@ -65,10 +65,22 @@ export function MarkPaidButton({
         }),
       });
     } else if (purchaseOrderId) {
-      await fetch("/api/credit-notes", {
-        method: "PATCH",
+      await fetch(`/api/purchases/${purchaseOrderId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purchaseOrderId }),
+        body: JSON.stringify({
+          payment: {
+            method:        data.method,
+            amount:        Number(data.amount),
+            date:          data.date,
+            bankName:      data.bankName      || null,
+            transactionId: data.transactionId || null,
+            chequeNumber:  data.chequeNumber  || null,
+            chequeDate:    data.chequeDate    || null,
+            chequeBank:    data.chequeBank    || null,
+            notes:         data.notes         || null,
+          },
+        }),
       });
     }
     reset();

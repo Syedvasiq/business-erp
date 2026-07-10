@@ -43,7 +43,7 @@ export default async function PayablesPage() {
 
   const [orders, creditNotes, suppliers] = await Promise.all([
     prisma.purchaseOrder.findMany({
-      where: { status: "RECEIVED" },
+      where: { status: { in: ["RECEIVED"] } },
       include: { supplier: true },
       orderBy: { orderDate: "asc" },
     }),

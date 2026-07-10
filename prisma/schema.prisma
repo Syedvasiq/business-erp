@@ -32,6 +32,7 @@ enum InvoiceStatus {
 enum PurchaseOrderStatus {
   DRAFT
   RECEIVED
+  PAID
   CANCELLED
 }
 
@@ -235,6 +236,7 @@ model PurchaseOrder {
   journalRef     String?
   lines          PurchaseOrderLine[]
   creditNotes    CreditNote[]
+  payments       Payment[]
   orderDate      DateTime            @default(now())
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -354,20 +356,22 @@ enum PaymentMethod {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  invoiceId     String
-  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
-  method        PaymentMethod
-  amount        Decimal       @db.Decimal(18, 2)
-  date          DateTime      @default(now())
-  bankName      String?
-  transactionId String?
-  chequeNumber  String?
-  chequeDate    DateTime?
-  chequeBank    String?
-  notes         String?
-  journalRef    String?
-  createdAt     DateTime      @default(now())
+  id              String         @id @default(cuid())
+  invoiceId       String?
+  invoice         Invoice?       @relation(fields: [invoiceId], references: [id])
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  method          PaymentMethod
+  amount          Decimal        @db.Decimal(18, 2)
+  date            DateTime       @default(now())
+  bankName        String?
+  transactionId   String?
+  chequeNumber    String?
+  chequeDate      DateTime?
+  chequeBank      String?
+  notes           String?
+  journalRef      String?
+  createdAt       DateTime       @default(now())
 }
 
 // ─── PARTNERS ────────────────────────────────────────────────────────────────
