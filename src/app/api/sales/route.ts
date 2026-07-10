@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
         totalAed,
         emirate: body.emirate,
         isSimplified: body.isSimplified ?? false,
+        issueDate: body.invoiceDate ? new Date(body.invoiceDate) : new Date(),
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
         assignedUserId: sessionUser.id,
         lines: { create: lineData },

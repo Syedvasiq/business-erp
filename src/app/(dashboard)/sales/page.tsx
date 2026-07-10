@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { SalesActions, SalesStatusButton } from "./SalesActions";
+import { SalesActions, SalesStatusButton, EditInvoiceButton } from "./SalesActions";
 import Link from "next/link";
 import {
   FileText,
@@ -273,6 +273,9 @@ export default async function SalesPage() {
                           <Printer size={13} />
                           View
                         </Link>
+                        {(inv.status === "DRAFT" || inv.status === "ISSUED") && (
+                          <EditInvoiceButton invoiceId={inv.id} />
+                        )}
                         <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
                       </div>
                     </td>
@@ -350,6 +353,9 @@ export default async function SalesPage() {
                     View Invoice
                     <ChevronRight size={14} />
                   </Link>
+                  {(inv.status === "DRAFT" || inv.status === "ISSUED") && (
+                    <EditInvoiceButton invoiceId={inv.id} />
+                  )}
                   <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
                 </div>
               </div>
