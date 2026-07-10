@@ -4,7 +4,7 @@ import { PLClient } from "./PLClient";
 import Link from "next/link";
 import {
   ShoppingCart, TrendingUp, Receipt, DollarSign,
-  BookOpen, FileSpreadsheet, RefreshCw,
+  BookOpen, FileSpreadsheet, RefreshCw, ArrowRightLeft, Landmark,
 } from "lucide-react";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -101,6 +101,14 @@ export default async function AccountingPage() {
               <p className="mt-1 text-sm text-slate-500">Overview for {monthLabel} · P&amp;L · VAT · Corporate Tax</p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link href="/accounting/receivables"
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                <TrendingUp size={15} /> Receivables
+              </Link>
+              <Link href="/accounting/payables"
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                <ArrowRightLeft size={15} /> Payables
+              </Link>
               <Link href="/accounting/expenses"
                 className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 <Receipt size={15} /> Expenses
@@ -128,7 +136,29 @@ export default async function AccountingPage() {
         </section>
 
         {/* Quick links */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Link href="/accounting/receivables">
+            <Card className="flex items-center gap-4 p-5 transition hover:shadow-md cursor-pointer">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+                <TrendingUp size={22} />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Accounts Receivable</p>
+                <p className="text-sm text-slate-500">Outstanding invoices &amp; customer credits</p>
+              </div>
+            </Card>
+          </Link>
+          <Link href="/accounting/payables">
+            <Card className="flex items-center gap-4 p-5 transition hover:shadow-md cursor-pointer">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                <Landmark size={22} />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Accounts Payable</p>
+                <p className="text-sm text-slate-500">Purchase orders &amp; supplier debit notes</p>
+              </div>
+            </Card>
+          </Link>
           <Link href="/accounting/expenses">
             <Card className="flex items-center gap-4 p-5 transition hover:shadow-md cursor-pointer">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">

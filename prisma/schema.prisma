@@ -113,6 +113,7 @@ model Customer {
   isB2B          Boolean   @default(false)
   assignedUserId String?
   invoices       Invoice[]
+  creditNotes    CreditNote[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -129,6 +130,7 @@ model Supplier {
   currency       CurrencyCode        @default(AED)
   purchaseOrders PurchaseOrder[]
   items          Item[]
+  creditNotes    CreditNote[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 }
@@ -359,6 +361,29 @@ model PartnerWithdrawal {
   journalRef  String?
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
+}
+
+// ─── CREDIT NOTES ────────────────────────────────────────────────────────────
+
+enum CreditNoteType {
+  CUSTOMER
+  SUPPLIER
+}
+
+model CreditNote {
+  id          String         @id @default(cuid())
+  number      String         @unique
+  type        CreditNoteType
+  customerId  String?
+  customer    Customer?      @relation(fields: [customerId], references: [id])
+  supplierId  String?
+  supplier    Supplier?      @relation(fields: [supplierId], references: [id])
+  amount      Decimal        @db.Decimal(18, 2)
+  vatAmount   Decimal        @default(0) @db.Decimal(18, 2)
+  reason      String
+  date        DateTime       @default(now())
+  journalRef  String?
+  createdAt   DateTime       @default(now())
 }
 
 // ─── UOM SETTINGS ────────────────────────────────────────────────────────────
