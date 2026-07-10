@@ -416,6 +416,16 @@ export function PurchaseActions() {
   );
 }
 
+type EditFormData = {
+  supplierId: string;
+  currency: string;
+  exchangeRate: string;
+  customsDuty: string;
+  shippingCost: string;
+  orderDate: string;
+  lines: LineItem[];
+};
+
 // ── Purchase Order edit button ─────────────────────────────────────────────
 export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
   const [open, setOpen] = useState(false);
@@ -426,10 +436,10 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
   const router = useRouter();
 
   const { register, handleSubmit, control, watch, reset, setValue, formState: { isSubmitting } } =
-    useForm<FormData>({
+    useForm<EditFormData>({
       defaultValues: {
         supplierId: "", currency: "AED", exchangeRate: "1",
-        customsDuty: "0", shippingCost: "0",
+        customsDuty: "0", shippingCost: "0", orderDate: "",
         lines: [{ itemId: "", qty: "1", unitCost: "" }],
       },
     });
@@ -462,10 +472,10 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
       orderDate: new Date(poData.orderDate).toISOString().slice(0, 10),
       lines: poData.lines.map((l: any) => ({
         itemId: l.itemId,
-        qty: String(l.qty),
-        unitCost: String(l.unitCost),
+        qty: String(Number(l.qty)),
+        unitCost: String(Number(l.unitCost)),
       })),
-    } as any);
+    });
   };
 
   useEffect(() => {
@@ -488,16 +498,18 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
   };
   const { subtotal, inputVat, customsDuty, shippingCost, total } = calcTotals();
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: EditFormData) => {
     const res = await fetch(`/api/purchases/${purchaseId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...data,
+        supplierId:   data.supplierId,
+        currency:     data.currency,
         exchangeRate: Number(data.exchangeRate),
-        customsDuty: Number(data.customsDuty),
+        customsDuty:  Number(data.customsDuty),
         shippingCost: Number(data.shippingCost),
-        lines: data.lines.map((l: any) => ({ ...l, qty: Number(l.qty), unitCost: Number(l.unitCost) })),
+        orderDate:    data.orderDate,
+        lines: data.lines.map((l) => ({ itemId: l.itemId, qty: Number(l.qty), unitCost: Number(l.unitCost) })),
       }),
     });
     if (res.ok) { setOpen(false); router.refresh(); }
@@ -538,7 +550,7 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
                   <Select label="Currency"
                     options={["AED","USD","EUR","GBP","SAR"].map((c) => ({ value: c, label: c }))}
                     {...register("currency")} />
-                  <Input label="Order Date *" type="date" {...(register as any)("orderDate", { required: true })} />
+                  <Input label="Order Date *" type="date" {...register("orderDate", { required: true })} />
                 </div>
                 {isRcm && selectedSupplier && (
                   <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">

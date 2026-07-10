@@ -41,7 +41,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Delete old journal lines for this PO
-    const oldJournal = await tx.journal.findFirst({ where: { reference: existing.number } });
+    const oldJournal = await tx.journal.findFirst({ where: { reference: { startsWith: existing.number } } });
     if (oldJournal) {
       await tx.journalLine.deleteMany({ where: { journalId: oldJournal.id } });
       await tx.journal.delete({ where: { id: oldJournal.id } });
@@ -131,7 +131,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       });
     }
 
-    await postJournal(po.number, `Purchase from ${supplier.name}`, new Date(body.orderDate), journalLines);
+    const journalRef = `${po.number}-R${Date.now()}`;
+    await postJournal(journalRef, `Purchase from ${supplier.name} (edited)`, new Date(body.orderDate), journalLines);
 
     return po;
   });
