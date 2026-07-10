@@ -468,33 +468,61 @@ export function SalesActions() {
 }
 
 // ── Invoice status change button ──────────────────────────────────────────────
-const NEXT_STATUSES: Record<string, { value: string; label: string; className: string }[]> = {
-  DRAFT: [
-    { value: "ISSUED", label: "Mark Issued", className: "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100" },
-    { value: "CANCELLED", label: "Cancel", className: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
-  ],
-  ISSUED: [
-    { value: "PAID", label: "Mark Paid", className: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" },
-    { value: "PARTIALLY_PAID", label: "Partially Paid", className: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" },
-    { value: "CANCELLED", label: "Cancel", className: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
-  ],
-  PARTIALLY_PAID: [
-    { value: "PAID", label: "Mark Paid", className: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" },
-    { value: "CANCELLED", label: "Cancel", className: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
-  ],
+type PaymentForm = {
+  status: string;
+  method: string;
+  amount: string;
+  date: string;
+  bankName: string;
+  transactionId: string;
+  chequeNumber: string;
+  chequeDate: string;
+  chequeBank: string;
+  notes: string;
 };
 
-export function SalesStatusButton({ invoiceId, currentStatus }: { invoiceId: string; currentStatus: string }) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+export function SalesStatusButton({
+  invoiceId,
+  currentStatus,
+  invoiceTotal,
+}: {
+  invoiceId: string;
+  currentStatus: string;
+  invoiceTotal?: number;
+}) {
+  const [dropOpen, setDropOpen] = useState(false);
+  const [payOpen, setPayOpen]   = useState(false);
+  const [loading, setLoading]   = useState(false);
   const router = useRouter();
 
-  const actions = NEXT_STATUSES[currentStatus];
-  if (!actions || actions.length === 0) return null;
+  const { register, handleSubmit, watch, reset, formState: { isSubmitting } } = useForm<PaymentForm>({
+    defaultValues: {
+      status: "PAID", method: "CASH",
+      amount: invoiceTotal ? String(invoiceTotal) : "",
+      date: new Date().toISOString().slice(0, 10),
+      bankName: "", transactionId: "", chequeNumber: "",
+      chequeDate: "", chequeBank: "", notes: "",
+    },
+  });
+
+  const method   = watch("method");
+  const statusVal = watch("status");
+
+  const canPay = currentStatus === "ISSUED" || currentStatus === "PARTIALLY_PAID";
+
+  const otherActions: { value: string; label: string; cls: string }[] = [];
+  if (currentStatus === "DRAFT") {
+    otherActions.push({ value: "ISSUED",    label: "Mark Issued",   cls: "bg-sky-50 text-sky-700 hover:bg-sky-100" });
+    otherActions.push({ value: "CANCELLED", label: "Cancel Invoice", cls: "bg-rose-50 text-rose-700 hover:bg-rose-100" });
+  }
+  if (currentStatus === "ISSUED" || currentStatus === "PARTIALLY_PAID") {
+    otherActions.push({ value: "CANCELLED", label: "Cancel Invoice", cls: "bg-rose-50 text-rose-700 hover:bg-rose-100" });
+  }
+
+  if (!canPay && otherActions.length === 0) return null;
 
   const changeStatus = async (status: string) => {
-    setLoading(true);
-    setOpen(false);
+    setLoading(true); setDropOpen(false);
     await fetch(`/api/sales/${invoiceId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -504,34 +532,175 @@ export function SalesStatusButton({ invoiceId, currentStatus }: { invoiceId: str
     router.refresh();
   };
 
-  return (
-    <div className="relative inline-block">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        disabled={loading}
-        className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-        aria-label="Change invoice status"
-      >
-        {loading ? <Loader2 size={13} className="animate-spin" /> : <ChevronDown size={13} />}
-        Status
-      </button>
+  const onPaySubmit = async (data: PaymentForm) => {
+    await fetch(`/api/sales/${invoiceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: data.status,
+        payment: {
+          method:        data.method,
+          amount:        Number(data.amount),
+          date:          data.date,
+          bankName:      data.bankName      || null,
+          transactionId: data.transactionId || null,
+          chequeNumber:  data.chequeNumber  || null,
+          chequeDate:    data.chequeDate    || null,
+          chequeBank:    data.chequeBank    || null,
+          notes:         data.notes         || null,
+        },
+      }),
+    });
+    reset();
+    setPayOpen(false);
+    router.refresh();
+  };
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 min-w-[160px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
-            {actions.map((action) => (
-              <button
-                key={action.value}
-                onClick={() => changeStatus(action.value)}
-                className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition ${action.className}`}
-              >
-                {action.label}
-              </button>
-            ))}
+  return (
+    <>
+      <div className="flex items-center gap-1.5">
+        {canPay && (
+          <button
+            onClick={() => setPayOpen(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+          >
+            Record Payment
+          </button>
+        )}
+        {otherActions.length > 0 && (
+          <div className="relative inline-block">
+            <button
+              onClick={() => setDropOpen((v) => !v)}
+              disabled={loading}
+              className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              {loading ? <Loader2 size={13} className="animate-spin" /> : <ChevronDown size={13} />}
+            </button>
+            {dropOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setDropOpen(false)} />
+                <div className="absolute right-0 z-20 mt-1 min-w-[160px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                  {otherActions.map((a) => (
+                    <button key={a.value} onClick={() => changeStatus(a.value)}
+                      className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition ${a.cls}`}>
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </div>
+
+      <Modal open={payOpen} onClose={() => setPayOpen(false)} title="" className="max-w-lg">
+        <div className="w-full">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Record Payment</h2>
+            <p className="mt-1 text-sm text-slate-500">Enter payment details — saved to ledger and payment history.</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onPaySubmit)} className="space-y-4 px-5 py-5 sm:px-6">
+
+            {/* Fully / Partially paid toggle */}
+            <div className="grid grid-cols-2 gap-3">
+              {([{ v: "PAID", label: "Fully Paid" }, { v: "PARTIALLY_PAID", label: "Partially Paid" }] as const).map((opt) => (
+                <label key={opt.v}
+                  className={`flex cursor-pointer items-center justify-center rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                    statusVal === opt.v ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}>
+                  <input type="radio" className="sr-only" value={opt.v} {...register("status")} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+
+            {/* Payment method pills */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Payment Method</p>
+              <div className="grid grid-cols-5 gap-2">
+                {([
+                  { v: "CASH",          label: "Cash" },
+                  { v: "BANK_TRANSFER", label: "Bank Transfer" },
+                  { v: "CHEQUE",        label: "Cheque" },
+                  { v: "ONLINE",        label: "Online" },
+                  { v: "CARD",          label: "Card" },
+                ] as const).map((m) => (
+                  <label key={m.v}
+                    className={`flex cursor-pointer items-center justify-center rounded-xl border-2 px-2 py-2.5 text-center text-xs font-semibold transition ${
+                      method === m.v ? "border-sky-600 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}>
+                    <input type="radio" className="sr-only" value={m.v} {...register("method")} />
+                    {m.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Amount + Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Amount (AED) *" type="text" inputMode="decimal" {...register("amount", { required: true })} />
+              <Input label="Payment Date *" type="date" {...register("date", { required: true })} />
+            </div>
+
+            {/* BANK TRANSFER */}
+            {method === "BANK_TRANSFER" && (
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Bank Transfer Details</p>
+                <Input label="Bank Name *" placeholder="e.g. Emirates NBD" {...register("bankName")} />
+                <Input label="Transaction / Reference ID *" placeholder="TXN123456" {...register("transactionId")} />
+              </div>
+            )}
+
+            {/* ONLINE */}
+            {method === "ONLINE" && (
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Online Payment Details</p>
+                <Input label="Transaction ID *" placeholder="e.g. PAY-ABC123" {...register("transactionId")} />
+                <Input label="Platform / Gateway" placeholder="e.g. Stripe, PayTabs, Network" {...register("bankName")} />
+              </div>
+            )}
+
+            {/* CARD */}
+            {method === "CARD" && (
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Card Payment Details</p>
+                <Input label="Approval / Transaction Code" placeholder="e.g. 123456" {...register("transactionId")} />
+                <Input label="Bank / Terminal" placeholder="e.g. FAB POS Terminal" {...register("bankName")} />
+              </div>
+            )}
+
+            {/* CHEQUE */}
+            {method === "CHEQUE" && (
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Cheque Details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Cheque Number *" placeholder="e.g. 001234" {...register("chequeNumber")} />
+                  <Input label="Cheque Date *" type="date" {...register("chequeDate")} />
+                </div>
+                <Input label="Issuing Bank *" placeholder="e.g. ADCB" {...register("chequeBank")} />
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Notes <span className="text-slate-400">(optional)</span></label>
+              <textarea rows={2} placeholder="Any additional payment notes..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                {...register("notes")} />
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setPayOpen(false)} className="min-h-[44px] rounded-2xl">Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                {isSubmitting ? "Saving..." : "Save Payment"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+    </>
   );
 }

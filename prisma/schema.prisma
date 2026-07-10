@@ -191,6 +191,7 @@ model Invoice {
   lines          InvoiceLine[]
   commissions    Commission[]
   creditNotes    CreditNote[]
+  payments       Payment[]
   journalRef     String?
   assignedUserId String?
   issueDate      DateTime      @default(now())
@@ -340,6 +341,33 @@ model Expense {
   reference   String?
   journalRef  String?
   createdAt   DateTime        @default(now())
+}
+
+// ─── PAYMENTS ────────────────────────────────────────────────────────────────
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  ONLINE
+  CARD
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
+  method        PaymentMethod
+  amount        Decimal       @db.Decimal(18, 2)
+  date          DateTime      @default(now())
+  bankName      String?
+  transactionId String?
+  chequeNumber  String?
+  chequeDate    DateTime?
+  chequeBank    String?
+  notes         String?
+  journalRef    String?
+  createdAt     DateTime      @default(now())
 }
 
 // ─── PARTNERS ────────────────────────────────────────────────────────────────

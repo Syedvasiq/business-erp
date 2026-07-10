@@ -273,7 +273,7 @@ export default async function SalesPage() {
                           <Printer size={13} />
                           View
                         </Link>
-                        <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} />
+                        <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
                       </div>
                     </td>
                   </tr>
@@ -350,7 +350,7 @@ export default async function SalesPage() {
                     View Invoice
                     <ChevronRight size={14} />
                   </Link>
-                  <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} />
+                  <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
                 </div>
               </div>
             </SurfaceCard>

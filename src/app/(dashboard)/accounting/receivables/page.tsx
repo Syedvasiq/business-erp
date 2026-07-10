@@ -147,7 +147,7 @@ export default async function ReceivablesPage() {
                       <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(Number(inv.totalAed))}</td>
                       <td className="px-5 py-4"><StatusBadge status={inv.status} /></td>
                       <td className="px-5 py-4">
-                        <MarkPaidButton invoiceId={inv.id} label="Mark Paid" />
+                        <MarkPaidButton invoiceId={inv.id} invoiceTotal={Number(inv.totalAed)} label="Mark Paid" />
                       </td>
                     </tr>
                   );

@@ -39,43 +39,60 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // ── When invoice is marked PAID, post commission journal entries ──────────
     // The commission record was created at invoice time but the expense is only
     // recognised and the liability recorded when payment is confirmed.
-    if (body.status === "PAID") {
+  if (body.status === "PAID" || body.status === "PARTIALLY_PAID") {
       const unpaidCommissions = invoice.commissions.filter((c) => !c.isPaid);
 
-      for (const comm of unpaidCommissions) {
-        const commAmount = Number(comm.totalPayout) - Number(comm.vatOnComm);
-        const vatOnComm  = Number(comm.vatOnComm);
-        const total      = Number(comm.totalPayout);
-
-        // DR Commission Expense + Input VAT (if external) / CR Commission Payable
-        await postJournal(
-          `COMM-${comm.id.slice(0, 8)}`,
-          `Commission for invoice ${invoice.number} — agent ${comm.agent.name}`,
-          new Date(),
-          [
-            { accountCode: "5100", type: "DEBIT",  amount: commAmount },
-            ...(vatOnComm > 0
-              ? [{ accountCode: "1200", type: "DEBIT"  as const, amount: vatOnComm }]
-              : []),
-            { accountCode: "2300", type: "CREDIT", amount: total },
-          ]
-        );
-
-        // Also update the commission record with the journal reference
-        await tx.commission.update({
-          where: { id: comm.id },
-          data: { journalRef: `COMM-${comm.id.slice(0, 8)}` },
-        });
+      // Only post commission journals on full PAID
+      if (body.status === "PAID") {
+        for (const comm of unpaidCommissions) {
+          const commAmount = Number(comm.totalPayout) - Number(comm.vatOnComm);
+          const vatOnComm  = Number(comm.vatOnComm);
+          const total      = Number(comm.totalPayout);
+          await postJournal(
+            `COMM-${comm.id.slice(0, 8)}`,
+            `Commission for invoice ${invoice.number} — agent ${comm.agent.name}`,
+            new Date(),
+            [
+              { accountCode: "5100", type: "DEBIT",  amount: commAmount },
+              ...(vatOnComm > 0 ? [{ accountCode: "1200", type: "DEBIT" as const, amount: vatOnComm }] : []),
+              { accountCode: "2300", type: "CREDIT", amount: total },
+            ]
+          );
+          await tx.commission.update({
+            where: { id: comm.id },
+            data: { journalRef: `COMM-${comm.id.slice(0, 8)}` },
+          });
+        }
       }
 
-      // DR Accounts Receivable → CR Cash (payment received)
+      // Store payment record
+      const paymentAmount = body.payment?.amount ?? Number(invoice.totalAed);
+      const journalRef = `PAY-${invoice.number}-${Date.now()}`;
+
+      await tx.payment.create({
+        data: {
+          invoiceId: id,
+          method: body.payment?.method ?? "CASH",
+          amount: paymentAmount,
+          date: body.payment?.date ? new Date(body.payment.date) : new Date(),
+          bankName:      body.payment?.bankName      || null,
+          transactionId: body.payment?.transactionId || null,
+          chequeNumber:  body.payment?.chequeNumber  || null,
+          chequeDate:    body.payment?.chequeDate ? new Date(body.payment.chequeDate) : null,
+          chequeBank:    body.payment?.chequeBank    || null,
+          notes:         body.payment?.notes         || null,
+          journalRef,
+        },
+      });
+
+      // DR Cash/Bank → CR Accounts Receivable
       await postJournal(
-        `PAY-${invoice.number}`,
-        `Payment received for invoice ${invoice.number}`,
-        new Date(),
+        journalRef,
+        `Payment received for ${invoice.number} via ${body.payment?.method ?? "CASH"}`,
+        body.payment?.date ? new Date(body.payment.date) : new Date(),
         [
-          { accountCode: "1000", type: "DEBIT",  amount: Number(invoice.totalAed) },
-          { accountCode: "1100", type: "CREDIT", amount: Number(invoice.totalAed) },
+          { accountCode: "1000", type: "DEBIT",  amount: paymentAmount },
+          { accountCode: "1100", type: "CREDIT", amount: paymentAmount },
         ]
       );
     }
