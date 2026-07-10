@@ -32,6 +32,7 @@ enum InvoiceStatus {
 enum PurchaseOrderStatus {
   DRAFT
   RECEIVED
+  PARTIALLY_PAID
   PAID
   CANCELLED
 }

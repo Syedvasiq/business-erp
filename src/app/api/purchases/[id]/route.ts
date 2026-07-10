@@ -26,7 +26,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Payment recording
     if (body.payment && !body.lines) {
-      const po = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id } });
+      const po = await prisma.purchaseOrder.findUniqueOrThrow({
+        where: { id },
+        include: { payments: true },
+      });
       await prisma.payment.create({
         data: {
           purchaseOrderId: id,
@@ -50,7 +53,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           { accountCode: "1000", type: "CREDIT", amount: body.payment.amount },
         ]
       );
-      const updated = await prisma.purchaseOrder.update({ where: { id }, data: { status: "PAID" } });
+      // Determine status: sum all payments including this one
+      const prevPaid = po.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const totalPaid = prevPaid + Number(body.payment.amount);
+      const newStatus = totalPaid >= Number(po.totalAed) - 0.01 ? "PAID" : "PARTIALLY_PAID";
+      const updated = await prisma.purchaseOrder.update({ where: { id }, data: { status: newStatus } });
       return NextResponse.json(updated);
     }
 

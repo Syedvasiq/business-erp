@@ -53,7 +53,7 @@ export default async function ReceivablesPage() {
   const [invoices, creditNotes, customers] = await Promise.all([
     prisma.invoice.findMany({
       where: { status: { in: ["ISSUED", "PARTIALLY_PAID", "DRAFT"] } },
-      include: { customer: true },
+      include: { customer: true, payments: true },
       orderBy: { issueDate: "asc" },
     }),
     prisma.creditNote.findMany({
@@ -147,7 +147,12 @@ export default async function ReceivablesPage() {
                       <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(Number(inv.totalAed))}</td>
                       <td className="px-5 py-4"><StatusBadge status={inv.status} /></td>
                       <td className="px-5 py-4">
-                        <MarkPaidButton invoiceId={inv.id} invoiceTotal={Number(inv.totalAed)} label="Mark Paid" />
+                        <MarkPaidButton
+                          invoiceId={inv.id}
+                          invoiceTotal={Number(inv.totalAed)}
+                          paidSoFar={inv.payments.reduce((s, p) => s + Number(p.amount), 0)}
+                          label="Record Payment"
+                        />
                       </td>
                     </tr>
                   );
