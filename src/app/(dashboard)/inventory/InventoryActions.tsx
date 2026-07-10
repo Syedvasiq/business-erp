@@ -251,12 +251,9 @@ export function InventoryActions() {
   });
 
   useEffect(() => {
-    if (open && suppliers.length === 0) {
-      fetch("/api/suppliers").then((r) => r.json()).then(setSuppliers);
-    }
-    if (open && uoms.length === 0) {
-      fetch("/api/uom").then((r) => r.json()).then(setUoms);
-    }
+    if (!open) return;
+    fetch("/api/suppliers").then((r) => r.json()).then(setSuppliers);
+    fetch("/api/uom").then((r) => r.json()).then(setUoms);
   }, [open]);
 
   const closeModal = () => { reset(); setOpen(false); };
@@ -268,6 +265,7 @@ export function InventoryActions() {
       body: JSON.stringify({
         name: data.name, sku: data.sku,
         barcode: data.barcode || undefined,
+        uom: data.uom,
         unitCost: Number(data.unitCost),
         retailPrice: Number(data.retailPrice),
         taxType: data.taxType,
