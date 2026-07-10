@@ -27,10 +27,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { vatRate: vatRatePct } = await getSettings();
   const VAT_RATE = vatRatePct / 100;
 
-  type JournalPayload = { ref: string; desc: string; date: Date; lines: any[] };
-  let journalPayload: JournalPayload | null = null;
-
-  const result = await prisma.$transaction(async (tx) => {
+  const { po: result, journalPayload } = await prisma.$transaction(async (tx) => {
     const existing = await tx.purchaseOrder.findUniqueOrThrow({
       where: { id },
       include: { lines: true },
@@ -134,19 +131,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       });
     }
 
-    journalPayload = {
-      ref: `${po.number}-R${Date.now()}`,
-      desc: `Purchase from ${supplier.name} (edited)`,
-      date: new Date(body.orderDate),
-      lines: journalLines,
+    return {
+      po,
+      journalPayload: {
+        ref: `${po.number}-R${Date.now()}`,
+        desc: `Purchase from ${supplier.name} (edited)`,
+        date: new Date(body.orderDate),
+        lines: journalLines,
+      },
     };
-
-    return po;
   });
 
-  if (journalPayload) {
-    await postJournal(journalPayload.ref, journalPayload.desc, journalPayload.date, journalPayload.lines);
-  }
+  await postJournal(journalPayload.ref, journalPayload.desc, journalPayload.date, journalPayload.lines);
 
   return NextResponse.json(result);
 }
