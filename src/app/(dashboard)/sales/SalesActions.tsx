@@ -66,7 +66,11 @@ export function SalesActions() {
   const watchedLines = watch("lines");
   const watchedCurrency = watch("currency");
 
-  // Auto-fill unit price when item is selected
+  const handleCustomerChange = (customerId: string) => {
+    const c = customers.find((x) => x.id === customerId);
+    if (c?.emirate) setValue("emirate", c.emirate);
+  };
+
   const handleItemChange = (i: number, itemId: string) => {
     const item = items.find((it) => it.id === itemId);
     if (item) {
@@ -80,7 +84,7 @@ export function SalesActions() {
 
   useEffect(() => {
     if (open) {
-      fetch("/api/customers").then((r) => r.json()).then(setCustomers);
+      fetch("/api/customers").then((r) => r.json()).then((data) => setCustomers([...data].sort((a, b) => a.name.localeCompare(b.name))));
       fetch("/api/inventory").then((r) => r.json()).then(setItems);
       fetch("/api/users").then((r) => r.json()).then(setUsers);
       fetch("/api/settings").then((r) => r.json()).then((s) => {
@@ -177,7 +181,7 @@ export function SalesActions() {
         New Invoice
       </Button>
 
-      <Modal open={open} onClose={closeModal} title="" className="max-w-4xl">
+      <Modal open={open} onClose={closeModal} title="" className="max-w-5xl">
         <div className="w-full">
           <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
             <div className="flex items-start gap-3">
@@ -209,6 +213,10 @@ export function SalesActions() {
                       ...customers.map((c) => ({ value: c.id, label: c.name })),
                     ]}
                     {...register("customerId", { required: true })}
+                    onChange={(e) => {
+                      register("customerId").onChange(e);
+                      handleCustomerChange(e.target.value);
+                    }}
                   />
                   <Select
                     label="Emirate"

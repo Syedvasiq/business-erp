@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     // Validate customer ownership
     const customer = await tx.customer.findUniqueOrThrow({ where: { id: body.customerId } });
     if (customer.assignedUserId && customer.assignedUserId !== sessionUser.id) {
-      const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(sessionUser.role);
-      if (!isAdmin) throw new Error("This customer is assigned to another staff member.");
+      if (!["SUPER_ADMIN", "ADMIN"].includes(sessionUser.role)) {
+        throw new Error("This customer is assigned to another staff member.");
+      }
     }
 
     for (const line of body.lines) {
@@ -50,19 +51,32 @@ export async function POST(req: NextRequest) {
       subtotal += lineSubtotal;
       vatTotal += vat;
 
-      // Deduct stock from the logged-in user's allocation; block if insufficient
-      const alloc = await tx.stockAllocation.findUnique({
-        where: { itemId_userId: { itemId: item.id, userId: sessionUser.id } },
-      });
-      if (!alloc) throw new Error(`No stock allocated for item "${item.name}". Contact admin.`);
-      const remaining = Number(alloc.allocatedQty) - Number(alloc.soldQty);
-      if (remaining < Number(line.qty)) {
-        throw new Error(`Insufficient stock for "${item.name}". Available: ${remaining}`);
+      // SUPER_ADMIN / ADMIN: deduct directly from item stock, no allocation needed
+      const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(sessionUser.role);
+
+      if (isAdmin) {
+        if (Number(item.stockQty) < Number(line.qty)) {
+          throw new Error(`Insufficient stock for "${item.name}". Available: ${Number(item.stockQty)}`);
+        }
+        await tx.item.update({
+          where: { id: item.id },
+          data: { stockQty: { decrement: Number(line.qty) } },
+        });
+      } else {
+        // Staff: deduct from their allocation
+        const alloc = await tx.stockAllocation.findUnique({
+          where: { itemId_userId: { itemId: item.id, userId: sessionUser.id } },
+        });
+        if (!alloc) throw new Error(`No stock allocated for item "${item.name}". Contact admin.`);
+        const remaining = Number(alloc.allocatedQty) - Number(alloc.soldQty);
+        if (remaining < Number(line.qty)) {
+          throw new Error(`Insufficient stock for "${item.name}". Available: ${remaining}`);
+        }
+        await tx.stockAllocation.update({
+          where: { itemId_userId: { itemId: item.id, userId: sessionUser.id } },
+          data: { soldQty: { increment: Number(line.qty) } },
+        });
       }
-      await tx.stockAllocation.update({
-        where: { itemId_userId: { itemId: item.id, userId: sessionUser.id } },
-        data: { soldQty: { increment: Number(line.qty) } },
-      });
 
       lineData.push({
         itemId: item.id,
