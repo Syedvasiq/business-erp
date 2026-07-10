@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { postJournal } from "@/lib/journal";
-import { generateDocNumber, VAT_RATE } from "@/lib/utils";
+import { generateDocNumber } from "@/lib/utils";
+import { getSettings } from "@/lib/settings";
 
 export async function GET() {
   const orders = await prisma.purchaseOrder.findMany({
@@ -13,6 +14,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  const { vatRate: vatRatePct } = await getSettings();
+  const VAT_RATE = vatRatePct / 100;
 
   const result = await prisma.$transaction(async (tx) => {
     const count = await tx.purchaseOrder.count();

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
-import { UAE_EMIRATES, VAT_RATE, formatAED } from "@/lib/utils";
+import { UAE_EMIRATES, formatAED } from "@/lib/utils";
 import { Plus, Trash2, ReceiptText, Loader2 } from "lucide-react";
 
 type LineItem = {
@@ -31,6 +31,7 @@ export function SalesActions() {
   const [open, setOpen] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
+  const [vatRate, setVatRate] = useState(0.05);
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -72,6 +73,9 @@ export function SalesActions() {
     if (open) {
       fetch("/api/customers").then((r) => r.json()).then(setCustomers);
       fetch("/api/inventory").then((r) => r.json()).then(setItems);
+      fetch("/api/settings").then((r) => r.json()).then((s) => {
+        if (s?.vatRate != null) setVatRate(Number(s.vatRate) / 100);
+      });
     }
   }, [open]);
 
@@ -102,7 +106,7 @@ export function SalesActions() {
       const net = gross - disc;
       subtotal += net;
       totalDiscount += disc;
-      if (item?.taxType === "STANDARD") vat += net * VAT_RATE;
+      if (item?.taxType === "STANDARD") vat += net * vatRate;
     });
 
     return { subtotal, totalDiscount, vat, total: subtotal + vat };
@@ -381,7 +385,7 @@ export function SalesActions() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-500">VAT 5%</span>
+                    <span className="text-slate-500">VAT {(vatRate * 100).toFixed(0)}%</span>
                     <span className="font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
                       {formatAED(vat)}
                     </span>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
-import { VAT_RATE, formatAED } from "@/lib/utils";
+import { formatAED } from "@/lib/utils";
 import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert } from "lucide-react";
 
 type LineItem = {
@@ -29,6 +29,7 @@ export function PurchaseActions() {
   const [open, setOpen] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
+  const [vatRate, setVatRate] = useState(0.05);
   const router = useRouter();
 
   const {
@@ -65,6 +66,9 @@ export function PurchaseActions() {
     if (open) {
       fetch("/api/suppliers").then((r) => r.json()).then(setSuppliers);
       fetch("/api/inventory").then((r) => r.json()).then(setItems);
+      fetch("/api/settings").then((r) => r.json()).then((s) => {
+        if (s?.vatRate != null) setVatRate(Number(s.vatRate) / 100);
+      });
     }
   }, [open]);
 
@@ -95,7 +99,7 @@ export function PurchaseActions() {
 
     const customsDuty = Number(watchedCustomsDuty || 0);
     const shippingCost = Number(watchedShippingCost || 0);
-    const inputVat = isRcm ? 0 : subtotal * VAT_RATE;
+    const inputVat = isRcm ? 0 : subtotal * vatRate;
     const total = subtotal + inputVat + customsDuty + shippingCost;
 
     return { subtotal, inputVat, customsDuty, shippingCost, total };
@@ -341,7 +345,7 @@ export function PurchaseActions() {
 
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-slate-500">
-                      Input VAT {isRcm ? "(RCM - self assessed)" : "(5%)"}
+                      Input VAT {isRcm ? "(RCM - self assessed)" : `(${(vatRate * 100).toFixed(0)}%)`}
                     </span>
                     <span className="font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
                       {formatAED(inputVat)}

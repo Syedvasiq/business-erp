@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { CustomerActions } from "./CustomerActions";
+import { CustomerActions, CustomerEditButton } from "./CustomerActions";
 import {
   Users,
   Building2,
@@ -213,6 +213,9 @@ export default async function CustomersPage() {
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Outstanding
                   </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -249,6 +252,19 @@ export default async function CustomersPage() {
 
                     <td className="px-6 py-4">
                       <OutstandingBadge amount={customer.outstanding} />
+                    </td>
+
+                    <td className="px-6 py-4 text-right">
+                      <CustomerEditButton
+                        customerId={customer.id}
+                        name={customer.name}
+                        email={customer.email}
+                        phone={customer.phone}
+                        trn={customer.trn}
+                        emirate={customer.emirate}
+                        address={customer.address}
+                        isB2B={customer.isB2B}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -323,10 +339,16 @@ export default async function CustomersPage() {
 
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                 <p className="text-xs text-slate-400">Customer summary</p>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-500">
-                  Details
-                  <ChevronRight size={15} />
-                </span>
+                <CustomerEditButton
+                  customerId={customer.id}
+                  name={customer.name}
+                  email={customer.email}
+                  phone={customer.phone}
+                  trn={customer.trn}
+                  emirate={customer.emirate}
+                  address={customer.address}
+                  isB2B={customer.isB2B}
+                />
               </div>
             </SurfaceCard>
           ))}

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { postJournal } from "@/lib/journal";
-import { generateDocNumber, VAT_RATE } from "@/lib/utils";
+import { generateDocNumber } from "@/lib/utils";
 import { requireSession } from "@/lib/session";
+import { getSettings } from "@/lib/settings";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   try {
+    const { vatRate: vatRatePct } = await getSettings();
+    const VAT_RATE = vatRatePct / 100;
     const result = await prisma.$transaction(async (tx) => {
     // Sequential invoice number
     const count = await tx.invoice.count();
