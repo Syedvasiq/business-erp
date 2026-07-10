@@ -83,22 +83,22 @@ export function UomManager({ initial }: { initial: Uom[] }) {
         {/* Add row */}
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Code *</label>
-            <input
-              className={`${inputCls} w-24 uppercase`}
-              placeholder="KG"
-              value={addCode}
-              onChange={(e) => { setAddCode(e.target.value.toUpperCase()); setAddError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Label</label>
             <input
               className={`${inputCls} w-40`}
               placeholder="Kilogram"
               value={addLabel}
               onChange={(e) => setAddLabel(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-600">Code *</label>
+            <input
+              className={`${inputCls} w-24 uppercase`}
+              placeholder="KG"
+              value={addCode}
+              onChange={(e) => { setAddCode(e.target.value.toUpperCase()); setAddError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
           </div>
