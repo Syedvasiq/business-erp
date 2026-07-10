@@ -30,7 +30,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Cannot modify a cancelled invoice" }, { status: 409 });
   }
 
-  // ── Full edit branch ────────────────────────────────────────────────────────
   if (body.edit) {
     try {
       const { vatRate: vatRatePct } = await (await import("@/lib/settings")).getSettings();

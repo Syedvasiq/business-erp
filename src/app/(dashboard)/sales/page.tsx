@@ -273,7 +273,7 @@ export default async function SalesPage() {
                           <Printer size={13} />
                           View
                         </Link>
-                        {inv.status !== "PAID" && inv.status !== "CANCELLED" && inv.status !== "PARTIALLY_PAID" && (
+                        {inv.status !== "CANCELLED" && (
                           <EditInvoiceButton invoiceId={inv.id} />
                         )}
                         <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
@@ -353,7 +353,7 @@ export default async function SalesPage() {
                     View Invoice
                     <ChevronRight size={14} />
                   </Link>
-                  {inv.status !== "PAID" && inv.status !== "CANCELLED" && inv.status !== "PARTIALLY_PAID" && (
+                  {inv.status !== "CANCELLED" && (
                     <EditInvoiceButton invoiceId={inv.id} />
                   )}
                   <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
