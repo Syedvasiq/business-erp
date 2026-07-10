@@ -386,6 +386,7 @@ export default async function DashboardPage() {
         totalAed: true,
         orderDate: true,
         supplier: { select: { name: true } },
+        payments: { select: { amount: true } },
       },
     }),
 
@@ -596,16 +597,20 @@ export default async function DashboardPage() {
               <EmptyState label="No purchases yet" icon={<ShoppingCart size={18} />} />
             ) : (
               <div className="space-y-1">
-                {recentPurchases.map((po) => (
-                  <ListRow
-                    key={po.id}
-                    title={po.number}
-                    subtitle={po.supplier.name}
-                    amount={formatAED(Number(po.totalAed))}
-                    date={formatShortDate(po.orderDate)}
-                    status={po.status}
-                  />
-                ))}
+                {recentPurchases.map((po) => {
+                  const amtPaid = po.payments.reduce((s, p) => s + Number(p.amount), 0);
+                  const showPaid = (po.status === "PAID" || po.status === "PARTIALLY_PAID") && amtPaid > 0;
+                  return (
+                    <ListRow
+                      key={po.id}
+                      title={po.number}
+                      subtitle={po.supplier.name}
+                      amount={formatAED(showPaid ? amtPaid : Number(po.totalAed))}
+                      date={formatShortDate(po.orderDate)}
+                      status={po.status}
+                    />
+                  );
+                })}
               </div>
             )}
           </SurfaceCard>
