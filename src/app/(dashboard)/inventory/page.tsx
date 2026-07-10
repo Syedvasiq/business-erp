@@ -258,12 +258,15 @@ export default async function InventoryPage() {
                     className="border-b border-slate-100 transition hover:bg-slate-50/80"
                   >
                     <td className="px-6 py-4 max-w-[180px]">
-                      <p
-                        className="font-semibold text-slate-900 truncate"
-                        title={item.name}
-                      >
-                        {item.name}
-                      </p>
+                      <div className="group relative">
+                        <p className="font-semibold text-slate-900 truncate">
+                          {item.name}
+                        </p>
+                        <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 hidden w-max max-w-[260px] rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg group-hover:block">
+                          {item.name}
+                          <div className="absolute left-3 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-slate-900" />
+                        </div>
+                      </div>
                     </td>
 
                     <td className="px-6 py-4">
@@ -274,12 +277,15 @@ export default async function InventoryPage() {
 
                     <td className="px-6 py-4 max-w-[140px]">
                       {item.supplier?.name ? (
-                        <span
-                          className="text-sm text-slate-600 truncate block"
-                          title={item.supplier.name}
-                        >
-                          {item.supplier.name}
-                        </span>
+                        <div className="group relative">
+                          <span className="text-sm text-slate-600 truncate block">
+                            {item.supplier.name}
+                          </span>
+                          <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 hidden w-max max-w-[260px] rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg group-hover:block">
+                            {item.supplier.name}
+                            <div className="absolute left-3 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-slate-900" />
+                          </div>
+                        </div>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
