@@ -33,6 +33,7 @@ export function SalesActions() {
   const [items, setItems] = useState<any[]>([]);
   const [vatRate, setVatRate] = useState(0.05);
   const [error, setError] = useState("");
+  const [lineUoms, setLineUoms] = useState<string[]>([""]);
   const router = useRouter();
 
   const {
@@ -66,7 +67,10 @@ export function SalesActions() {
   // Auto-fill unit price when item is selected
   const handleItemChange = (i: number, itemId: string) => {
     const item = items.find((it) => it.id === itemId);
-    if (item) setValue(`lines.${i}.unitPrice`, Number(item.retailPrice).toFixed(2));
+    if (item) {
+      setValue(`lines.${i}.unitPrice`, Number(item.retailPrice).toFixed(2));
+      setLineUoms((prev) => { const next = [...prev]; next[i] = item.uom ?? "PCS"; return next; });
+    }
   };
 
   useEffect(() => {
@@ -116,6 +120,7 @@ export function SalesActions() {
 
   const closeModal = () => {
     setError("");
+    setLineUoms([""]);
     reset({
       customerId: "",
       currency: "AED",
@@ -262,7 +267,7 @@ export function SalesActions() {
 
                   <button
                     type="button"
-                    onClick={() => append({ itemId: "", qty: "1", unitPrice: "", discountPct: "0" })}
+                    onClick={() => { append({ itemId: "", qty: "1", unitPrice: "", discountPct: "0" }); setLineUoms((p) => [...p, ""]); }}
                     className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   >
                     <Plus size={14} />
@@ -298,12 +303,19 @@ export function SalesActions() {
 
                         <div>
                           <label className="mb-1.5 block text-sm font-medium text-slate-700">Qty</label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
-                            {...register(`lines.${i}.qty`)}
-                          />
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
+                              {...register(`lines.${i}.qty`)}
+                            />
+                            {lineUoms[i] && (
+                              <span className="shrink-0 rounded-lg bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
+                                {lineUoms[i]}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <div>
@@ -328,7 +340,7 @@ export function SalesActions() {
 
                         <button
                           type="button"
-                          onClick={() => remove(i)}
+                          onClick={() => { remove(i); setLineUoms((p) => p.filter((_, idx) => idx !== i)); }}
                           className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-white text-red-500 transition hover:bg-red-50 hover:text-red-600"
                           aria-label="Remove line item"
                         >

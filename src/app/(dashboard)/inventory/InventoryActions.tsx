@@ -13,6 +13,7 @@ type FormData = {
   name: string;
   sku: string;
   barcode: string;
+  uom: string;
   unitCost: string;
   retailPrice: string;
   taxType: string;
@@ -40,6 +41,7 @@ function ItemFormFields({
   submitLabel: string;
   skuReadOnly?: boolean;
 }) {
+  const UOM_OPTIONS = ["PCS","KG","LTR","MTR","BOX","CTN","SET","PKT","TON","SQM"];
   return (
     <div className="space-y-5">
       <div>
@@ -56,9 +58,14 @@ function ItemFormFields({
               error={errors.sku?.message} />
             <Input label="Barcode" placeholder="Optional barcode" {...register("barcode")} />
           </div>
-          <Select label="Supplier"
-            options={[{ value: "", label: "— None —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
-            {...register("supplierId")} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Select label="Unit of Measurement"
+              options={UOM_OPTIONS.map((u) => ({ value: u, label: u }))}
+              {...register("uom")} />
+            <Select label="Supplier"
+              options={[{ value: "", label: "— None —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
+              {...register("supplierId")} />
+          </div>
         </div>
       </div>
 
@@ -125,6 +132,7 @@ export function InventoryEditButton(props: {
   name: string;
   sku: string;
   barcode?: string | null;
+  uom?: string;
   unitCost: number;
   retailPrice: number;
   taxType: string;
@@ -139,6 +147,7 @@ export function InventoryEditButton(props: {
       name: props.name,
       sku: props.sku,
       barcode: props.barcode ?? "",
+      uom: (props as any).uom ?? "PCS",
       unitCost: String(props.unitCost),
       retailPrice: String(props.retailPrice),
       taxType: props.taxType,
@@ -156,6 +165,7 @@ export function InventoryEditButton(props: {
         name: props.name,
         sku: props.sku,
         barcode: props.barcode ?? "",
+        uom: (props as any).uom ?? "PCS",
         unitCost: String(props.unitCost),
         retailPrice: String(props.retailPrice),
         taxType: props.taxType,
@@ -173,6 +183,7 @@ export function InventoryEditButton(props: {
       body: JSON.stringify({
         name: data.name,
         barcode: data.barcode || undefined,
+        uom: data.uom,
         unitCost: Number(data.unitCost),
         retailPrice: Number(data.retailPrice),
         taxType: data.taxType,
@@ -227,7 +238,7 @@ export function InventoryActions() {
   const router = useRouter();
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
-    defaultValues: { name: "", sku: "", barcode: "", unitCost: "", retailPrice: "", taxType: "STANDARD", stockQty: "0", supplierId: "" },
+    defaultValues: { name: "", sku: "", barcode: "", uom: "PCS", unitCost: "", retailPrice: "", taxType: "STANDARD", stockQty: "0", supplierId: "" },
   });
 
   useEffect(() => {

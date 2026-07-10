@@ -140,6 +140,7 @@ model Item {
   name             String
   sku              String         @unique
   barcode          String?
+  uom              String         @default("PCS")
   unitCost         Decimal        @db.Decimal(18, 2)
   retailPrice      Decimal        @db.Decimal(18, 2)
   taxType          TaxType        @default(STANDARD)

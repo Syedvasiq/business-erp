@@ -30,6 +30,7 @@ export function PurchaseActions() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [vatRate, setVatRate] = useState(0.05);
+  const [lineUoms, setLineUoms] = useState<string[]>([""]);
   const router = useRouter();
 
   const {
@@ -108,6 +109,7 @@ export function PurchaseActions() {
   const { subtotal, inputVat, customsDuty, shippingCost, total } = calcTotals();
 
   const closeModal = () => {
+    setLineUoms([""]);
     reset({
       supplierId: "",
       currency: "AED",
@@ -260,7 +262,7 @@ export function PurchaseActions() {
 
                   <button
                     type="button"
-                    onClick={() => append({ itemId: "", qty: "1", unitCost: "" })}
+                    onClick={() => { append({ itemId: "", qty: "1", unitCost: "" }); setLineUoms((p) => [...p, ""]); }}
                     className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   >
                     <Plus size={14} />
@@ -282,6 +284,11 @@ export function PurchaseActions() {
                           <select
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
                             {...register(`lines.${i}.itemId`)}
+                            onChange={(e) => {
+                              register(`lines.${i}.itemId`).onChange(e);
+                              const item = items.find((it) => it.id === e.target.value);
+                              setLineUoms((prev) => { const next = [...prev]; next[i] = item?.uom ?? ""; return next; });
+                            }}
                           >
                             <option value="">Select item...</option>
                             {items.map((item) => (
@@ -296,12 +303,19 @@ export function PurchaseActions() {
                           <label className="mb-1.5 block text-sm font-medium text-slate-700">
                             Qty
                           </label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
-                            {...register(`lines.${i}.qty`)}
-                          />
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
+                              {...register(`lines.${i}.qty`)}
+                            />
+                            {lineUoms[i] && (
+                              <span className="shrink-0 rounded-lg bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
+                                {lineUoms[i]}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <div>

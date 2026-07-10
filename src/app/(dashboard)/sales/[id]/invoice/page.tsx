@@ -148,7 +148,7 @@ export default async function InvoicePrintPage({
                     <td className="py-3 pl-3 text-slate-400">{i + 1}</td>
                     <td className="py-3 font-medium text-slate-900">{line.item.name}</td>
                     <td className="py-3 font-mono text-xs text-slate-500">{line.item.sku}</td>
-                    <td className="py-3 text-right tabular-nums text-slate-700">{Number(line.qty).toFixed(2)}</td>
+                    <td className="py-3 text-right tabular-nums text-slate-700">{Number(line.qty).toFixed(2)} <span className="text-slate-400 text-[10px]">{line.item.uom}</span></td>
                     <td className="py-3 text-right tabular-nums text-slate-700">{formatAED(Number(line.unitPrice))}</td>
                     <td className="py-3 text-right tabular-nums text-slate-500">{taxLabel} / {formatAED(Number(line.vatAmount))}</td>
                     <td className="py-3 pr-3 text-right tabular-nums font-semibold text-slate-900">{formatAED(Number(line.lineTotal))}</td>

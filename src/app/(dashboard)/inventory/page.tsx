@@ -225,6 +225,9 @@ export default async function InventoryPage() {
                     SKU
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    UOM
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Supplier
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -272,6 +275,12 @@ export default async function InventoryPage() {
                     <td className="px-6 py-4">
                       <span className="rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600">
                         {item.sku}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <span className="rounded-lg bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
+                        {item.uom}
                       </span>
                     </td>
 
@@ -330,6 +339,7 @@ export default async function InventoryPage() {
                         name={item.name}
                         sku={item.sku}
                         barcode={item.barcode}
+                        uom={item.uom}
                         unitCost={item.unitCost}
                         retailPrice={item.retailPrice}
                         taxType={item.taxType}
@@ -427,6 +437,7 @@ export default async function InventoryPage() {
                   name={item.name}
                   sku={item.sku}
                   barcode={item.barcode}
+                  uom={item.uom}
                   unitCost={item.unitCost}
                   retailPrice={item.retailPrice}
                   taxType={item.taxType}
