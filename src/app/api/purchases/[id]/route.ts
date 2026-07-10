@@ -58,6 +58,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { vatRate: vatRatePct } = await getSettings();
     const VAT_RATE = vatRatePct / 100;
 
+    if (!body.orderDate) {
+      return NextResponse.json({ error: "orderDate is required" }, { status: 400 });
+    }
+
     const { po: result, journalPayload } = await prisma.$transaction(async (tx) => {
       const existing = await tx.purchaseOrder.findUniqueOrThrow({
         where: { id },

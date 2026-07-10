@@ -550,7 +550,14 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
                   <Select label="Currency"
                     options={["AED","USD","EUR","GBP","SAR"].map((c) => ({ value: c, label: c }))}
                     {...register("currency")} />
-                  <Input label="Order Date *" type="date" {...register("orderDate", { required: true })} />
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700">Order Date *</label>
+                    <input
+                      type="date"
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
+                      {...register("orderDate", { required: true })}
+                    />
+                  </div>
                 </div>
                 {isRcm && selectedSupplier && (
                   <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
