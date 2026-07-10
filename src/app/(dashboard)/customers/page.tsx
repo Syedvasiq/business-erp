@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
 import { CustomerActions, CustomerEditButton } from "./CustomerActions";
+import Link from "next/link";
 import {
   Users,
   Building2,
   Wallet,
   AlertCircle,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 
 function SurfaceCard({
@@ -272,17 +274,23 @@ export default async function CustomersPage() {
                     </td>
 
                     <td className="px-6 py-4 text-right">
-                      <CustomerEditButton
-                        customerId={customer.id}
-                        name={customer.name}
-                        email={customer.email}
-                        phone={customer.phone}
-                        trn={customer.trn}
-                        emirate={customer.emirate}
-                        address={customer.address}
-                        isB2B={customer.isB2B}
-                        assignedUserId={customer.assignedUserId}
-                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/customers/${customer.id}`}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
+                          <ExternalLink size={12} /> View
+                        </Link>
+                        <CustomerEditButton
+                          customerId={customer.id}
+                          name={customer.name}
+                          email={customer.email}
+                          phone={customer.phone}
+                          trn={customer.trn}
+                          emirate={customer.emirate}
+                          address={customer.address}
+                          isB2B={customer.isB2B}
+                          assignedUserId={customer.assignedUserId}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

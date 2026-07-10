@@ -40,8 +40,11 @@ function ItemFormFields({
   onCancel: () => void;
   submitLabel: string;
   skuReadOnly?: boolean;
+  uoms?: { code: string; label: string }[];
 }) {
-  const UOM_OPTIONS = ["PCS","KG","LTR","MTR","BOX","CTN","SET","PKT","TON","SQM"];
+  const UOM_OPTIONS = uoms && uoms.length > 0
+    ? uoms.map((u) => ({ value: u.code, label: `${u.code} — ${u.label}` }))
+    : ["PCS","KG","LTR","MTR","BOX","CTN","SET","PKT","TON","SQM"].map((u) => ({ value: u, label: u }));
   return (
     <div className="space-y-5">
       <div>
@@ -60,7 +63,7 @@ function ItemFormFields({
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select label="Unit of Measurement"
-              options={UOM_OPTIONS.map((u) => ({ value: u, label: u }))}
+              options={UOM_OPTIONS}
               {...register("uom")} />
             <Select label="Supplier"
               options={[{ value: "", label: "— None —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
@@ -140,6 +143,7 @@ export function InventoryEditButton(props: {
 }) {
   const [open, setOpen] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [uoms, setUoms] = useState<{ code: string; label: string }[]>([]);
   const router = useRouter();
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -160,6 +164,9 @@ export function InventoryEditButton(props: {
     if (open) {
       if (suppliers.length === 0) {
         fetch("/api/suppliers").then((r) => r.json()).then(setSuppliers);
+      }
+      if (uoms.length === 0) {
+        fetch("/api/uom").then((r) => r.json()).then(setUoms);
       }
       reset({
         name: props.name,
@@ -221,7 +228,7 @@ export function InventoryEditButton(props: {
           </div>
           <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-5 sm:px-6 sm:py-6">
             <ItemFormFields
-              register={register} errors={errors} suppliers={suppliers}
+              register={register} errors={errors} suppliers={suppliers} uoms={uoms}
               isSubmitting={isSubmitting} onCancel={() => setOpen(false)}
               submitLabel="Save Changes" skuReadOnly />
           </form>
@@ -235,6 +242,7 @@ export function InventoryEditButton(props: {
 export function InventoryActions() {
   const [open, setOpen] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [uoms, setUoms] = useState<{ code: string; label: string }[]>([]);
   const router = useRouter();
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -244,6 +252,9 @@ export function InventoryActions() {
   useEffect(() => {
     if (open && suppliers.length === 0) {
       fetch("/api/suppliers").then((r) => r.json()).then(setSuppliers);
+    }
+    if (open && uoms.length === 0) {
+      fetch("/api/uom").then((r) => r.json()).then(setUoms);
     }
   }, [open]);
 
@@ -293,7 +304,7 @@ export function InventoryActions() {
           </div>
           <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-5 sm:px-6 sm:py-6">
             <ItemFormFields
-              register={register} errors={errors} suppliers={suppliers}
+              register={register} errors={errors} suppliers={suppliers} uoms={uoms}
               isSubmitting={isSubmitting} onCancel={closeModal}
               submitLabel="Save Item" />
           </form>

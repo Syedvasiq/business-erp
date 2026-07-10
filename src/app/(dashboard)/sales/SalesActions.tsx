@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { UAE_EMIRATES, formatAED } from "@/lib/utils";
-import { Plus, Trash2, ReceiptText, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ReceiptText, Loader2, ChevronDown, User, Phone, Mail, MapPin, Hash } from "lucide-react";
 
 type LineItem = {
   itemId: string;
@@ -30,6 +30,7 @@ type FormData = {
 export function SalesActions() {
   const [open, setOpen] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [vatRate, setVatRate] = useState(0.05);
   const [error, setError] = useState("");
@@ -77,6 +78,7 @@ export function SalesActions() {
     if (open) {
       fetch("/api/customers").then((r) => r.json()).then(setCustomers);
       fetch("/api/inventory").then((r) => r.json()).then(setItems);
+      fetch("/api/users").then((r) => r.json()).then(setUsers);
       fetch("/api/settings").then((r) => r.json()).then((s) => {
         if (s?.vatRate != null) setVatRate(Number(s.vatRate) / 100);
       });
@@ -203,7 +205,6 @@ export function SalesActions() {
                     ]}
                     {...register("customerId", { required: true })}
                   />
-
                   <Select
                     label="Emirate"
                     options={[
@@ -214,7 +215,35 @@ export function SalesActions() {
                   />
                 </div>
 
-
+                {/* Customer info panel */}
+                {(() => {
+                  const cid = watch("customerId");
+                  const c = customers.find((x) => x.id === cid);
+                  if (!c) return null;
+                  const assignedUser = c.assignedUserId ? users.find((u: any) => u.id === c.assignedUserId) : null;
+                  return (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                        {c.phone && <span className="flex items-center gap-1.5 text-slate-600"><Phone size={13} className="text-slate-400" />{c.phone}</span>}
+                        {c.email && <span className="flex items-center gap-1.5 text-slate-600"><Mail size={13} className="text-slate-400" />{c.email}</span>}
+                        {c.emirate && <span className="flex items-center gap-1.5 text-slate-600"><MapPin size={13} className="text-slate-400" />{c.emirate}</span>}
+                        {c.trn && <span className="flex items-center gap-1.5 text-slate-600"><Hash size={13} className="text-slate-400" />TRN: {c.trn}</span>}
+                        {c.address && <span className="flex items-center gap-1.5 text-slate-600"><MapPin size={13} className="text-slate-400" />{c.address}</span>}
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${c.isB2B ? "bg-sky-50 text-sky-700 ring-sky-100" : "bg-slate-100 text-slate-600 ring-slate-200"}`}>
+                          {c.isB2B ? "B2B" : "B2C"}
+                        </span>
+                        {assignedUser && (
+                          <span className="flex items-center gap-1.5">
+                            <User size={13} className="text-violet-400" />
+                            <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-100">
+                              Assigned: {assignedUser.name}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div>

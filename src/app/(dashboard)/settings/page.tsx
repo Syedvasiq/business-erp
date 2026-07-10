@@ -1,5 +1,7 @@
 import { getSettings } from "@/lib/settings";
+import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "./SettingsForm";
+import { UomManager } from "./UomManager";
 import {
   Settings,
   Building2,
@@ -45,7 +47,10 @@ function InfoTile({
 }
 
 export default async function SettingsPage() {
-  const settings = await getSettings();
+  const [settings, uoms] = await Promise.all([
+    getSettings(),
+    prisma.uomSetting.findMany({ orderBy: { code: "asc" } }),
+  ]);
 
   return (
     <main className="min-h-full bg-slate-50">
@@ -100,8 +105,9 @@ export default async function SettingsPage() {
         </Card>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-6">
             <SettingsForm settings={settings} />
+            <UomManager initial={uoms} />
           </div>
 
           <aside className="space-y-6">

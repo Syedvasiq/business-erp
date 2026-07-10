@@ -361,6 +361,15 @@ model PartnerWithdrawal {
   createdAt   DateTime @default(now())
 }
 
+// ─── UOM SETTINGS ────────────────────────────────────────────────────────────
+
+model UomSetting {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  label     String
+  createdAt DateTime @default(now())
+}
+
 // ─── COMPANY SETTINGS ────────────────────────────────────────────────────────
 
 model CompanySetting {
