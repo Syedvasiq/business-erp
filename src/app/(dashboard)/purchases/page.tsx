@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { PurchaseActions, PurchaseStatusButton } from "./PurchaseActions";
+import { PurchaseActions, PurchaseStatusButton, PurchaseViewButton } from "./PurchaseActions";
 import {
   ShoppingCart,
   ReceiptText,
@@ -265,7 +265,10 @@ export default async function PurchasesPage() {
                     </td>
 
                     <td className="px-6 py-4 text-right">
-                      <PurchaseStatusButton purchaseId={po.id} currentStatus={po.status} />
+                      <div className="flex items-center justify-end gap-1.5">
+                        <PurchaseViewButton purchaseId={po.id} />
+                        <PurchaseStatusButton purchaseId={po.id} currentStatus={po.status} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -340,7 +343,10 @@ export default async function PurchasesPage() {
 
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                 <StatusBadge status={po.status} />
-                <PurchaseStatusButton purchaseId={po.id} currentStatus={po.status} />
+                <div className="flex items-center gap-1.5">
+                  <PurchaseViewButton purchaseId={po.id} />
+                  <PurchaseStatusButton purchaseId={po.id} currentStatus={po.status} />
+                </div>
               </div>
             </SurfaceCard>
           ))}

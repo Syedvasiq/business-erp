@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { formatAED } from "@/lib/utils";
-import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert, ChevronDown, Eye } from "lucide-react";
 
 type LineItem = {
   itemId: string;
@@ -410,6 +410,111 @@ export function PurchaseActions() {
               </Button>
             </div>
           </form>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+// ── Purchase Order view details button ───────────────────────────────────────
+export function PurchaseViewButton({ purchaseId }: { purchaseId: string }) {
+  const [open, setOpen] = useState(false);
+  const [po, setPo] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleOpen = async () => {
+    setOpen(true);
+    if (!po) {
+      setLoading(true);
+      const data = await fetch(`/api/purchases/${purchaseId}`).then((r) => r.json());
+      setPo(data);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={handleOpen}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-sky-50 hover:text-sky-700"
+        aria-label="View purchase order details"
+      >
+        <Eye size={14} />
+      </button>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="" className="max-w-2xl">
+        <div className="w-full">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+              {po ? po.number : "Loading..."}
+            </h2>
+            {po && (
+              <p className="mt-1 text-sm text-slate-500">
+                {po.supplier?.name} · {new Date(po.orderDate).toLocaleDateString("en-AE")}
+              </p>
+            )}
+          </div>
+
+          <div className="px-5 py-5 sm:px-6">
+            {loading && (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 size={20} className="animate-spin text-slate-400" />
+              </div>
+            )}
+            {po && !loading && (
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-slate-200">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Item</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Qty</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Unit Cost</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">VAT</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {po.lines?.map((line: any) => (
+                        <tr key={line.id} className="border-b border-slate-100 last:border-0">
+                          <td className="px-4 py-3 font-medium text-slate-800">
+                            {line.item?.name}
+                            <span className="ml-1.5 font-mono text-xs text-slate-400">{line.item?.sku}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 [font-variant-numeric:tabular-nums]">
+                            {Number(line.qty)} {line.item?.uom}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 [font-variant-numeric:tabular-nums]">
+                            {formatAED(Number(line.unitCost))}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 [font-variant-numeric:tabular-nums]">
+                            {formatAED(Number(line.vatAmount))}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-800 [font-variant-numeric:tabular-nums]">
+                            {formatAED(Number(line.lineTotal))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm space-y-1.5">
+                  {Number(po.customsDuty) > 0 && (
+                    <div className="flex justify-between"><span className="text-slate-500">Customs Duty</span><span className="font-medium text-slate-700">{formatAED(Number(po.customsDuty))}</span></div>
+                  )}
+                  {Number(po.shippingCost) > 0 && (
+                    <div className="flex justify-between"><span className="text-slate-500">Shipping Cost</span><span className="font-medium text-slate-700">{formatAED(Number(po.shippingCost))}</span></div>
+                  )}
+                  <div className="flex justify-between"><span className="text-slate-500">Input VAT</span><span className="font-medium text-slate-700">{formatAED(Number(po.inputVat))}</span></div>
+                  <div className="flex justify-between border-t border-slate-200 pt-2">
+                    <span className="font-semibold text-slate-900">Total AED</span>
+                    <span className="font-semibold text-slate-900">{formatAED(Number(po.totalAed))}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
     </>
