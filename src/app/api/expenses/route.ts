@@ -24,27 +24,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "description and amount are required" }, { status: 400 });
   }
 
-  const expense = await prisma.$transaction(async (tx) => {
-    const exp = await tx.expense.create({
-      data: {
-        description,
-        category: category ?? "OTHER",
-        amount:    Number(amount),
-        date:      date ? new Date(date) : new Date(),
-        reference: reference ?? null,
-      },
-    });
-
-    // DR Operating Expenses / CR Cash & Bank
-    const ref = `EXP-${exp.id.slice(0, 8)}`;
-    await postJournal(ref, description, new Date(exp.date), [
-      { accountCode: "5300", type: "DEBIT",  amount: Number(amount) },
-      { accountCode: "1000", type: "CREDIT", amount: Number(amount) },
-    ]);
-
-    await tx.expense.update({ where: { id: exp.id }, data: { journalRef: ref } });
-    return exp;
+  const exp = await prisma.expense.create({
+    data: {
+      description,
+      category: category ?? "OTHER",
+      amount:    Number(amount),
+      date:      date ? new Date(date) : new Date(),
+      reference: reference ?? null,
+    },
   });
 
-  return NextResponse.json(expense, { status: 201 });
+  const ref = `EXP-${exp.id.slice(0, 8)}`;
+
+  // Post journal OUTSIDE transaction to avoid Neon deadlock
+  await postJournal(ref, description, new Date(exp.date), [
+    { accountCode: "5300", type: "DEBIT",  amount: Number(amount) },
+    { accountCode: "1000", type: "CREDIT", amount: Number(amount) },
+  ]);
+
+  await prisma.expense.update({ where: { id: exp.id }, data: { journalRef: ref } });
+
+  return NextResponse.json(exp, { status: 201 });
 }

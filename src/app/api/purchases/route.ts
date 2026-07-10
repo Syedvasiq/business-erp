@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
   const { vatRate: vatRatePct } = await getSettings();
   const VAT_RATE = vatRatePct / 100;
 
+  let poResult: any;
+
   const result = await prisma.$transaction(async (tx) => {
     const count = await tx.purchaseOrder.count();
     const number = generateDocNumber("PO", count + 1);
@@ -49,9 +51,9 @@ export async function POST(req: NextRequest) {
           body.lines.reduce((s: number, l: any) => s + Number(l.qty), 0)
         : 0;
 
-    const totalAed =
-      (subtotal + inputVat + Number(body.customsDuty ?? 0) + Number(body.shippingCost ?? 0)) *
-      Number(body.exchangeRate ?? 1);
+    const customsDuty = Number(body.customsDuty ?? 0);
+    const shippingCost = Number(body.shippingCost ?? 0);
+    const totalAed = (subtotal + inputVat + customsDuty + shippingCost) * Number(body.exchangeRate ?? 1);
 
     const po = await tx.purchaseOrder.create({
       data: {
@@ -62,8 +64,8 @@ export async function POST(req: NextRequest) {
         exchangeRate: body.exchangeRate ?? 1,
         subtotalAed: subtotal,
         inputVat,
-        customsDuty: body.customsDuty ?? 0,
-        shippingCost: body.shippingCost ?? 0,
+        customsDuty,
+        shippingCost,
         totalAed,
         isRcm,
         lines: { create: lineData },
@@ -86,32 +88,29 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Double-entry journal
-    const journalLines: any[] = [
-      { accountCode: "1300", type: "DEBIT", amount: subtotal },
-      { accountCode: "2000", type: "CREDIT", amount: totalAed },
-    ];
-
-    if (inputVat > 0) {
-      journalLines.push({ accountCode: "1200", type: "DEBIT", amount: inputVat });
-    }
-    if (isRcm) {
-      const rcmVat = subtotal * VAT_RATE;
-      journalLines.push({ accountCode: "1200", type: "DEBIT", amount: rcmVat });
-      journalLines.push({ accountCode: "2200", type: "CREDIT", amount: rcmVat });
-    }
-    if (Number(body.customsDuty ?? 0) + Number(body.shippingCost ?? 0) > 0) {
-      journalLines.push({
-        accountCode: "5200",
-        type: "DEBIT",
-        amount: Number(body.customsDuty ?? 0) + Number(body.shippingCost ?? 0),
-      });
-    }
-
-    await postJournal(po.number, `Purchase from ${supplier.name}`, new Date(), journalLines);
-
+    poResult = { po, supplier, subtotal, inputVat, customsDuty, shippingCost, totalAed, isRcm };
     return po;
   });
+
+  // Post journal OUTSIDE transaction to avoid Neon deadlock
+  const { po, supplier, subtotal, inputVat, customsDuty, shippingCost, totalAed, isRcm } = poResult;
+  const VAT_RATE2 = VAT_RATE;
+
+  const journalLines: any[] = [
+    { accountCode: "1300", type: "DEBIT",  amount: subtotal },
+  ];
+  if (inputVat > 0) journalLines.push({ accountCode: "1200", type: "DEBIT", amount: inputVat });
+  if (isRcm) {
+    const rcmVat = subtotal * VAT_RATE2;
+    journalLines.push({ accountCode: "1200", type: "DEBIT",  amount: rcmVat });
+    journalLines.push({ accountCode: "2200", type: "CREDIT", amount: rcmVat });
+  }
+  if (customsDuty + shippingCost > 0) {
+    journalLines.push({ accountCode: "5200", type: "DEBIT", amount: customsDuty + shippingCost });
+  }
+  journalLines.push({ accountCode: "2000", type: "CREDIT", amount: totalAed });
+
+  await postJournal(`${po.number}-${Date.now()}`, `Purchase from ${supplier.name}`, new Date(), journalLines);
 
   return NextResponse.json(result, { status: 201 });
 }

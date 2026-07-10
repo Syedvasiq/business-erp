@@ -6,13 +6,11 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const report = searchParams.get("report");
   const from = searchParams.get("from")
-    ? new Date(searchParams.get("from")!)
+    ? new Date(searchParams.get("from")! + "T00:00:00")
     : new Date(new Date().getFullYear(), 0, 1);
   const to = searchParams.get("to")
-    ? new Date(searchParams.get("to")!)
+    ? new Date(searchParams.get("to")! + "T23:59:59")
     : new Date();
-  // make "to" inclusive of the whole day
-  to.setHours(23, 59, 59, 999);
 
   if (report === "pl")     return getPL(from, to);
   if (report === "vat201") return getVAT201(from, to);

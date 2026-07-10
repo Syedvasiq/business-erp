@@ -29,40 +29,38 @@ export async function POST(req: NextRequest) {
   const vatAmount = body.includeVat ? parseFloat((amount * VAT_RATE).toFixed(2)) : 0;
   const total = amount + vatAmount;
 
-  const note = await prisma.$transaction(async (tx) => {
-    const cn = await tx.creditNote.create({
-      data: {
-        number,
-        type: body.type,
-        customerId: body.customerId || null,
-        supplierId: body.supplierId || null,
-        invoiceId: body.invoiceId || null,
-        purchaseOrderId: body.purchaseOrderId || null,
-        amount,
-        vatAmount,
-        reason: body.reason,
-        date: body.date ? new Date(body.date) : new Date(),
-      },
-    });
-
-    const journalLines =
-      body.type === "CUSTOMER"
-        ? [
-            { accountCode: "1100", type: "CREDIT" as const, amount: total },
-            { accountCode: "4000", type: "DEBIT"  as const, amount: amount },
-            ...(vatAmount > 0 ? [{ accountCode: "2100", type: "DEBIT" as const, amount: vatAmount }] : []),
-          ]
-        : [
-            { accountCode: "2000", type: "DEBIT"  as const, amount: total },
-            { accountCode: "1300", type: "CREDIT" as const, amount: amount },
-            ...(vatAmount > 0 ? [{ accountCode: "1200", type: "CREDIT" as const, amount: vatAmount }] : []),
-          ];
-
-    await postJournal(number, `Credit Note — ${body.reason}`, cn.date, journalLines);
-    return cn;
+  const cn = await prisma.creditNote.create({
+    data: {
+      number,
+      type: body.type,
+      customerId: body.customerId || null,
+      supplierId: body.supplierId || null,
+      invoiceId: body.invoiceId || null,
+      purchaseOrderId: body.purchaseOrderId || null,
+      amount,
+      vatAmount,
+      reason: body.reason,
+      date: body.date ? new Date(body.date) : new Date(),
+    },
   });
 
-  return NextResponse.json(note, { status: 201 });
+  const journalLines =
+    body.type === "CUSTOMER"
+      ? [
+          { accountCode: "1100", type: "CREDIT" as const, amount: total },
+          { accountCode: "4000", type: "DEBIT"  as const, amount: amount },
+          ...(vatAmount > 0 ? [{ accountCode: "2100", type: "DEBIT" as const, amount: vatAmount }] : []),
+        ]
+      : [
+          { accountCode: "2000", type: "DEBIT"  as const, amount: total },
+          { accountCode: "1300", type: "CREDIT" as const, amount: amount },
+          ...(vatAmount > 0 ? [{ accountCode: "1200", type: "CREDIT" as const, amount: vatAmount }] : []),
+        ];
+
+  // Post journal OUTSIDE transaction to avoid Neon deadlock
+  await postJournal(number, `Credit Note — ${body.reason}`, cn.date, journalLines);
+
+  return NextResponse.json(cn, { status: 201 });
 }
 
 // Mark invoice as PAID
