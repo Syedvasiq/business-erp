@@ -10,10 +10,10 @@ async function nextNumber() {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type"); // CUSTOMER | SUPPLIER
+  const type = searchParams.get("type");
   const notes = await prisma.creditNote.findMany({
     where: type ? { type: type as any } : undefined,
-    include: { customer: true, supplier: true },
+    include: { customer: true, supplier: true, invoice: true, purchaseOrder: true },
     orderBy: { date: "desc" },
   });
   return NextResponse.json(notes);
@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
         type: body.type,
         customerId: body.customerId || null,
         supplierId: body.supplierId || null,
+        invoiceId: body.invoiceId || null,
+        purchaseOrderId: body.purchaseOrderId || null,
         amount,
         vatAmount,
         reason: body.reason,
@@ -43,30 +45,62 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Journal entries
-    // CUSTOMER credit note: DR Output VAT (if any) + DR Sales Revenue / CR Accounts Receivable
-    // SUPPLIER credit note: DR Accounts Payable / CR Input VAT (if any) + CR Inventory/Expense
     const journalLines =
       body.type === "CUSTOMER"
         ? [
-            { accountCode: "1100", type: "CREDIT" as const, amount: total },   // CR AR
-            { accountCode: "4000", type: "DEBIT"  as const, amount: amount },  // DR Sales Revenue
-            ...(vatAmount > 0
-              ? [{ accountCode: "2100", type: "DEBIT" as const, amount: vatAmount }] // DR Output VAT
-              : []),
+            { accountCode: "1100", type: "CREDIT" as const, amount: total },
+            { accountCode: "4000", type: "DEBIT"  as const, amount: amount },
+            ...(vatAmount > 0 ? [{ accountCode: "2100", type: "DEBIT" as const, amount: vatAmount }] : []),
           ]
         : [
-            { accountCode: "2000", type: "DEBIT"  as const, amount: total },   // DR AP
-            { accountCode: "1300", type: "CREDIT" as const, amount: amount },  // CR Inventory
-            ...(vatAmount > 0
-              ? [{ accountCode: "1200", type: "CREDIT" as const, amount: vatAmount }] // CR Input VAT
-              : []),
+            { accountCode: "2000", type: "DEBIT"  as const, amount: total },
+            { accountCode: "1300", type: "CREDIT" as const, amount: amount },
+            ...(vatAmount > 0 ? [{ accountCode: "1200", type: "CREDIT" as const, amount: vatAmount }] : []),
           ];
 
     await postJournal(number, `Credit Note — ${body.reason}`, cn.date, journalLines);
-
     return cn;
   });
 
   return NextResponse.json(note, { status: 201 });
+}
+
+// Mark invoice as PAID
+export async function PATCH(req: NextRequest) {
+  const body = await req.json();
+
+  if (body.invoiceId) {
+    const inv = await prisma.invoice.update({
+      where: { id: body.invoiceId },
+      data: { status: "PAID" },
+    });
+    // Post journal: DR AR, CR Cash
+    await postJournal(
+      `PMT-${inv.number}`,
+      `Payment received — ${inv.number}`,
+      new Date(),
+      [
+        { accountCode: "1000", type: "DEBIT"  as const, amount: Number(inv.totalAed) },
+        { accountCode: "1100", type: "CREDIT" as const, amount: Number(inv.totalAed) },
+      ]
+    );
+    return NextResponse.json(inv);
+  }
+
+  if (body.purchaseOrderId) {
+    // For POs "mark paid" means we record the payment to supplier
+    const po = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: body.purchaseOrderId } });
+    await postJournal(
+      `PMT-${po.number}`,
+      `Payment to supplier — ${po.number}`,
+      new Date(),
+      [
+        { accountCode: "2000", type: "DEBIT"  as const, amount: Number(po.totalAed) },
+        { accountCode: "1000", type: "CREDIT" as const, amount: Number(po.totalAed) },
+      ]
+    );
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ error: "Missing invoiceId or purchaseOrderId" }, { status: 400 });
 }

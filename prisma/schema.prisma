@@ -190,6 +190,7 @@ model Invoice {
   isSimplified   Boolean       @default(false)
   lines          InvoiceLine[]
   commissions    Commission[]
+  creditNotes    CreditNote[]
   journalRef     String?
   assignedUserId String?
   issueDate      DateTime      @default(now())
@@ -232,6 +233,7 @@ model PurchaseOrder {
   isRcm          Boolean             @default(false)
   journalRef     String?
   lines          PurchaseOrderLine[]
+  creditNotes    CreditNote[]
   orderDate      DateTime            @default(now())
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -371,19 +373,23 @@ enum CreditNoteType {
 }
 
 model CreditNote {
-  id          String         @id @default(cuid())
-  number      String         @unique
-  type        CreditNoteType
-  customerId  String?
-  customer    Customer?      @relation(fields: [customerId], references: [id])
-  supplierId  String?
-  supplier    Supplier?      @relation(fields: [supplierId], references: [id])
-  amount      Decimal        @db.Decimal(18, 2)
-  vatAmount   Decimal        @default(0) @db.Decimal(18, 2)
-  reason      String
-  date        DateTime       @default(now())
-  journalRef  String?
-  createdAt   DateTime       @default(now())
+  id              String         @id @default(cuid())
+  number          String         @unique
+  type            CreditNoteType
+  customerId      String?
+  customer        Customer?      @relation(fields: [customerId], references: [id])
+  supplierId      String?
+  supplier        Supplier?      @relation(fields: [supplierId], references: [id])
+  invoiceId       String?
+  invoice         Invoice?       @relation(fields: [invoiceId], references: [id])
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  amount          Decimal        @db.Decimal(18, 2)
+  vatAmount       Decimal        @default(0) @db.Decimal(18, 2)
+  reason          String
+  date            DateTime       @default(now())
+  journalRef      String?
+  createdAt       DateTime       @default(now())
 }
 
 // ─── UOM SETTINGS ────────────────────────────────────────────────────────────

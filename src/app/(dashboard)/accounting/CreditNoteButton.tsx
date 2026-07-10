@@ -12,6 +12,8 @@ import { Plus, FileX, Loader2 } from "lucide-react";
 type FormData = {
   customerId: string;
   supplierId: string;
+  invoiceId: string;
+  purchaseOrderId: string;
   amount: string;
   includeVat: boolean;
   reason: string;
@@ -22,18 +24,22 @@ export function CreditNoteButton({
   type,
   customers = [],
   suppliers = [],
+  invoices = [],
+  purchaseOrders = [],
 }: {
   type: "CUSTOMER" | "SUPPLIER";
   customers?: { id: string; name: string }[];
   suppliers?: { id: string; name: string }[];
+  invoices?: { id: string; number: string; customerName: string; total: number }[];
+  purchaseOrders?: { id: string; number: string; supplierName: string; total: number }[];
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
   const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm<FormData>({
     defaultValues: {
-      customerId: "", supplierId: "", amount: "", includeVat: false,
-      reason: "", date: new Date().toISOString().slice(0, 10),
+      customerId: "", supplierId: "", invoiceId: "", purchaseOrderId: "",
+      amount: "", includeVat: false, reason: "", date: new Date().toISOString().slice(0, 10),
     },
   });
 
@@ -41,7 +47,15 @@ export function CreditNoteButton({
   const includeVat = watch("includeVat");
   const vatPreview = includeVat ? parseFloat((amount * 0.05).toFixed(2)) : 0;
 
+  // When invoice selected, auto-fill customer
+  const watchedInvoiceId = watch("invoiceId");
+  const watchedPoId = watch("purchaseOrderId");
+
   const onSubmit = async (data: FormData) => {
+    // Derive customerId/supplierId from selected invoice/PO if not set
+    const selectedInv = invoices.find((i) => i.id === data.invoiceId);
+    const selectedPo = purchaseOrders.find((p) => p.id === data.purchaseOrderId);
+
     await fetch("/api/credit-notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,6 +63,8 @@ export function CreditNoteButton({
         type,
         customerId: data.customerId || null,
         supplierId: data.supplierId || null,
+        invoiceId: data.invoiceId || null,
+        purchaseOrderId: data.purchaseOrderId || null,
         amount: Number(data.amount),
         includeVat: data.includeVat,
         reason: data.reason,
@@ -83,26 +99,59 @@ export function CreditNoteButton({
                 <h2 className="text-lg font-semibold tracking-tight text-slate-900">{label}</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {type === "CUSTOMER"
-                    ? "Issue a credit to reduce the customer's outstanding balance."
-                    : "Raise a debit note to reduce the amount owed to this supplier."}
+                    ? "Issue a credit against a specific invoice to reduce the customer's balance."
+                    : "Raise a debit note against a PO to reduce the amount owed to this supplier."}
                 </p>
               </div>
             </div>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-5 py-5 sm:px-6">
+
             {type === "CUSTOMER" ? (
-              <Select
-                label="Customer *"
-                options={[{ value: "", label: "Select customer..." }, ...customers.map((c) => ({ value: c.id, label: c.name }))]}
-                {...register("customerId", { required: true })}
-              />
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Invoice Reference *</label>
+                  <select
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                    {...register("invoiceId", { required: true })}
+                  >
+                    <option value="">Select invoice...</option>
+                    {invoices.map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.number} — {inv.customerName} (AED {inv.total.toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Select
+                  label="Customer *"
+                  options={[{ value: "", label: "Select customer..." }, ...customers.map((c) => ({ value: c.id, label: c.name }))]}
+                  {...register("customerId", { required: true })}
+                />
+              </>
             ) : (
-              <Select
-                label="Supplier *"
-                options={[{ value: "", label: "Select supplier..." }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
-                {...register("supplierId", { required: true })}
-              />
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Purchase Order Reference *</label>
+                  <select
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                    {...register("purchaseOrderId", { required: true })}
+                  >
+                    <option value="">Select purchase order...</option>
+                    {purchaseOrders.map((po) => (
+                      <option key={po.id} value={po.id}>
+                        {po.number} — {po.supplierName} (AED {po.total.toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Select
+                  label="Supplier *"
+                  options={[{ value: "", label: "Select supplier..." }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
+                  {...register("supplierId", { required: true })}
+                />
+              </>
             )}
 
             <div className="grid grid-cols-2 gap-4">
