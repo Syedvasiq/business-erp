@@ -513,6 +513,10 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
       }),
     });
     if (res.ok) { setOpen(false); router.refresh(); }
+    else {
+      const err = await res.json().catch(() => ({}));
+      alert(`Save failed: ${err?.error ?? err?.detail ?? res.status}`);
+    }
   };
 
   return (
