@@ -27,7 +27,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { vatRate: vatRatePct } = await getSettings();
   const VAT_RATE = vatRatePct / 100;
 
-  let journalPayload: { ref: string; desc: string; date: Date; lines: any[] } | null = null;
+  type JournalPayload = { ref: string; desc: string; date: Date; lines: any[] };
+  let journalPayload: JournalPayload | null = null;
 
   const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.purchaseOrder.findUniqueOrThrow({
