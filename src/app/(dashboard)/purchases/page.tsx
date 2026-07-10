@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
 import { PurchaseActions, PurchaseStatusButton, PurchaseViewButton, PurchaseEditButton } from "./PurchaseActions";
+import { PurchaseTable } from "@/components/PurchaseTable";
 import {
   ShoppingCart,
   ReceiptText,
   ShieldAlert,
   PackageCheck,
-  ChevronRight,
 } from "lucide-react";
 
 function SurfaceCard({
@@ -104,7 +104,7 @@ function TaxModeBadge({ isRcm }: { isRcm: boolean }) {
 export default async function PurchasesPage() {
   const orders = await prisma.purchaseOrder.findMany({
     include: { supplier: true },
-    orderBy: { id: "asc" },
+    orderBy: { id: "desc" },
   });
 
   const mappedOrders = orders.map((po) => ({
@@ -113,6 +113,7 @@ export default async function PurchasesPage() {
     inputVat: Number(po.inputVat),
     customsDuty: Number(po.customsDuty),
     totalAed: Number(po.totalAed),
+    exchangeRate: Number(po.exchangeRate),
   }));
 
   const totalOrders = mappedOrders.length;
@@ -176,106 +177,7 @@ export default async function PurchasesPage() {
         </section>
 
         <SurfaceCard className="hidden overflow-hidden lg:block">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">Purchase register</h2>
-              <p className="mt-1 text-sm text-slate-500">{totalOrders} purchase orders</p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-slate-200">
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    PO
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Supplier
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Subtotal
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Input VAT
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Customs
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Total
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Tax mode
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {mappedOrders.map((po) => (
-                  <tr
-                    key={po.id}
-                    className="border-b border-slate-100 transition hover:bg-slate-50/80"
-                  >
-                    <td className="px-6 py-4">
-                      <span className="font-mono text-sm font-semibold text-sky-700">
-                        {po.number}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-slate-900">{po.supplier.name}</p>
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(po.orderDate).toLocaleDateString("en-AE")}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
-                      {formatAED(po.subtotalAed)}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
-                      {formatAED(po.inputVat)}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
-                      {formatAED(po.customsDuty)}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">
-                      {formatAED(po.totalAed)}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <TaxModeBadge isRcm={po.isRcm} />
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <StatusBadge status={po.status} />
-                    </td>
-
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <PurchaseEditButton purchaseId={po.id} />
-                        <PurchaseViewButton purchaseId={po.id} />
-                        <PurchaseStatusButton purchaseId={po.id} currentStatus={po.status} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PurchaseTable orders={mappedOrders} />
         </SurfaceCard>
 
         <div className="grid grid-cols-1 gap-4 lg:hidden">

@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
 import { SalesActions, SalesStatusButton, EditInvoiceButton } from "./SalesActions";
+import { InvoiceTable } from "@/components/InvoiceTable";
 import Link from "next/link";
 import {
   FileText,
   Wallet,
   ReceiptText,
   Clock3,
-  Printer,
 } from "lucide-react";
 
 function SurfaceCard({
@@ -90,28 +90,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function InvoiceTypeBadge({ isSimplified }: { isSimplified: boolean }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${
-        isSimplified
-          ? "bg-slate-100 text-slate-700 ring-slate-200"
-          : "bg-blue-50 text-blue-700 ring-blue-100"
-      }`}
-    >
-      {isSimplified ? "Simplified" : "Tax Invoice"}
-    </span>
-  );
-}
-
 export default async function SalesPage() {
   const invoices = await prisma.invoice.findMany({
     include: { customer: true },
-    orderBy: { id: "asc" },
+    orderBy: { id: "desc" },
   });
 
   const mappedInvoices = invoices.map((inv) => ({
     ...inv,
+    exchangeRate: Number(inv.exchangeRate),
     subtotalAed: Number(inv.subtotalAed),
     vatAmount: Number(inv.vatAmount),
     totalAed: Number(inv.totalAed),
@@ -178,109 +165,7 @@ export default async function SalesPage() {
         </section>
 
         <SurfaceCard className="hidden overflow-hidden lg:block">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">Invoice register</h2>
-              <p className="mt-1 text-sm text-slate-500">{totalInvoices} invoices</p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-slate-200">
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Invoice
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Customer
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Emirate
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Type
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Subtotal
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    VAT
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Total
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {mappedInvoices.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className="border-b border-slate-100 transition hover:bg-slate-50/80"
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/sales/${inv.id}/invoice`}
-                        className="font-mono text-sm font-semibold text-sky-700 hover:text-sky-900 hover:underline"
-                      >
-                        {inv.number}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-slate-900">{inv.customer.name}</p>
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(inv.issueDate).toLocaleDateString("en-AE")}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {inv.emirate ?? "—"}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <InvoiceTypeBadge isSimplified={inv.isSimplified} />
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
-                      {formatAED(inv.subtotalAed)}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 [font-variant-numeric:tabular-nums]">
-                      {formatAED(inv.vatAmount)}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">
-                      {formatAED(inv.totalAed)}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <StatusBadge status={inv.status} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {inv.status !== "CANCELLED" && (
-                          <EditInvoiceButton invoiceId={inv.id} />
-                        )}
-                        <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} invoiceTotal={inv.totalAed} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <InvoiceTable invoices={mappedInvoices} />
         </SurfaceCard>
 
         <div className="grid grid-cols-1 gap-4 lg:hidden">
@@ -307,7 +192,7 @@ export default async function SalesPage() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <InvoiceTypeBadge isSimplified={inv.isSimplified} />
+                <StatusBadge status={inv.status} />
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
