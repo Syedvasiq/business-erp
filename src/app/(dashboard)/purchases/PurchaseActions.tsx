@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { formatAED } from "@/lib/utils";
-import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Loader2, ShieldAlert, ChevronDown } from "lucide-react";
 
 type LineItem = {
   itemId: string;
@@ -399,5 +399,65 @@ export function PurchaseActions() {
         </div>
       </Modal>
     </>
+  );
+}
+
+// ── Purchase Order status change button ──────────────────────────────────────
+const PO_NEXT_STATUSES: Record<string, { value: string; label: string; className: string }[]> = {
+  DRAFT: [
+    { value: "RECEIVED", label: "Mark Received", className: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" },
+    { value: "CANCELLED", label: "Cancel", className: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
+  ],
+};
+
+export function PurchaseStatusButton({ purchaseId, currentStatus }: { purchaseId: string; currentStatus: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const actions = PO_NEXT_STATUSES[currentStatus];
+  if (!actions || actions.length === 0) return null;
+
+  const changeStatus = async (status: string) => {
+    setLoading(true);
+    setOpen(false);
+    await fetch(`/api/purchases/${purchaseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    setLoading(false);
+    router.refresh();
+  };
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={loading}
+        className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        aria-label="Change purchase order status"
+      >
+        {loading ? <Loader2 size={13} className="animate-spin" /> : <ChevronDown size={13} />}
+        Status
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-20 mt-1 min-w-[160px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+            {actions.map((action) => (
+              <button
+                key={action.value}
+                onClick={() => changeStatus(action.value)}
+                className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition ${action.className}`}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

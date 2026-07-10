@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { SalesActions } from "./SalesActions";
+import { SalesActions, SalesStatusButton } from "./SalesActions";
 import Link from "next/link";
 import {
   FileText,
@@ -265,13 +265,16 @@ export default async function SalesPage() {
                       <StatusBadge status={inv.status} />
                     </td>
                     <td className="px-6 py-4">
-                      <Link
-                        href={`/sales/${inv.id}/invoice`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-sky-600 hover:text-sky-800"
-                      >
-                        <Printer size={13} />
-                        View
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/sales/${inv.id}/invoice`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-sky-600 hover:text-sky-800"
+                        >
+                          <Printer size={13} />
+                          View
+                        </Link>
+                        <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -338,14 +341,17 @@ export default async function SalesPage() {
 
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                 <StatusBadge status={inv.status} />
-                <Link
-                  href={`/sales/${inv.id}/invoice`}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:text-sky-800"
-                >
-                  <Printer size={14} />
-                  View Invoice
-                  <ChevronRight size={14} />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/sales/${inv.id}/invoice`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:text-sky-800"
+                  >
+                    <Printer size={14} />
+                    View Invoice
+                    <ChevronRight size={14} />
+                  </Link>
+                  <SalesStatusButton invoiceId={inv.id} currentStatus={inv.status} />
+                </div>
               </div>
             </SurfaceCard>
           ))}

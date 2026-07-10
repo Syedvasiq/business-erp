@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
-import { Plus, CheckCircle2, Loader2 } from "lucide-react";
+import { Plus, CheckCircle2, Loader2, Pencil } from "lucide-react";
 import { formatAED } from "@/lib/utils";
 
 type AgentForm = { name: string; email: string; isInternal: string; trn: string; rate: string; basis: string };
