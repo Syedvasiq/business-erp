@@ -92,7 +92,7 @@ export function AllocateActions({
               {errors.userId && <p className="mt-1 text-xs text-rose-600">{errors.userId.message}</p>}
             </div>
 
-            <Input label="Quantity *" type="number" step="0.001" min="0.001" placeholder="0"
+            <Input label="Quantity *" type="text" inputMode="decimal" placeholder="0"
               {...register("qty", { required: "Required" })}
               error={errors.qty?.message} />
 

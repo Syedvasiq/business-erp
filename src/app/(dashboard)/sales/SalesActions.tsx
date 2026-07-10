@@ -228,8 +228,8 @@ export function SalesActions() {
 
                   <Input
                     label="Exchange Rate"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="1"
                     {...register("exchangeRate")}
                   />
@@ -309,9 +309,8 @@ export function SalesActions() {
                         <div>
                           <label className="mb-1.5 block text-sm font-medium text-slate-700">Unit Price</label>
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
+                            inputMode="decimal"
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
                             {...register(`lines.${i}.unitPrice`)}
                           />
@@ -320,10 +319,8 @@ export function SalesActions() {
                         <div>
                           <label className="mb-1.5 block text-sm font-medium text-slate-700">Disc %</label>
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
+                            type="text"
+                            inputMode="decimal"
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
                             {...register(`lines.${i}.discountPct`)}
                           />

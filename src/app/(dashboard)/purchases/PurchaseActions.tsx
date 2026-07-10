@@ -227,21 +227,21 @@ export function PurchaseActions() {
                 <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
                   <Input
                     label="Exchange Rate"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="1"
                     {...register("exchangeRate")}
                   />
                   <Input
                     label="Customs Duty (AED)"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     {...register("customsDuty")}
                   />
                   <Input
                     label="Shipping Cost (AED)"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     {...register("shippingCost")}
                   />
                 </div>
@@ -297,8 +297,8 @@ export function PurchaseActions() {
                             Qty
                           </label>
                           <input
-                            type="number"
-                            step="0.001"
+                            type="text"
+                            inputMode="decimal"
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
                             {...register(`lines.${i}.qty`)}
                           />
@@ -309,8 +309,8 @@ export function PurchaseActions() {
                             Unit Cost
                           </label>
                           <input
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400"
                             {...register(`lines.${i}.unitCost`)}
                           />

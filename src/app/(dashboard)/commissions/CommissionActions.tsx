@@ -110,7 +110,7 @@ export function CommissionActions({ agents, markPaidId, markPaidAmount }: Props)
               { value: "AFTER_PAYMENT", label: "After Full Payment" },
             ]} {...agentForm.register("basis")} />
           </div>
-          <Input label="Rate (%)" type="number" step="0.01" {...agentForm.register("rate")} />
+          <Input label="Rate (%)" type="text" inputMode="decimal" {...agentForm.register("rate")} />
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setAgentOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={agentForm.formState.isSubmitting}>Save Agent</Button>

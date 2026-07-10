@@ -48,7 +48,7 @@ function ExpenseFormFields({
         error={errors.description?.message} />
       <div className="grid grid-cols-2 gap-4">
         <Select label="Category" options={CATEGORIES} {...register("category")} />
-        <Input label="Amount (AED) *" type="number" step="0.01" placeholder="0.00"
+        <Input label="Amount (AED) *" type="text" inputMode="decimal" placeholder="0.00"
           {...register("amount", { required: "Required" })}
           error={errors.amount?.message} />
       </div>

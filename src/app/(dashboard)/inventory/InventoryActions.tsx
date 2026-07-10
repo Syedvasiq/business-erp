@@ -65,14 +65,14 @@ function ItemFormFields({
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Pricing & stock</p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input label="Unit Cost (AED) *" type="number" step="0.01" placeholder="0.00"
+          <Input label="Unit Cost (AED) *" type="text" inputMode="decimal" placeholder="0.00"
             {...register("unitCost", { required: "Unit cost is required" })}
             error={errors.unitCost?.message} />
-          <Input label="Retail Price (AED) *" type="number" step="0.01" placeholder="0.00"
+          <Input label="Retail Price (AED) *" type="text" inputMode="decimal" placeholder="0.00"
             {...register("retailPrice", { required: "Retail price is required" })}
             error={errors.retailPrice?.message} />
           {!skuReadOnly && (
-            <Input label="Opening Stock Qty" type="number" step="0.001" placeholder="0"
+            <Input label="Opening Stock Qty" type="text" inputMode="decimal" placeholder="0"
               {...register("stockQty")} />
           )}
         </div>

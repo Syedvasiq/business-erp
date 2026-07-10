@@ -194,8 +194,8 @@ export function SettingsForm({ settings }: { settings: CompanySettings }) {
 
               <Field label="Payment Terms (days)">
                 <input
-                  type="number"
-                  min={0}
+                  type="text"
+                  inputMode="numeric"
                   {...register("paymentTermsDays")}
                   className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
                 />
@@ -203,9 +203,8 @@ export function SettingsForm({ settings }: { settings: CompanySettings }) {
 
               <Field label="VAT Rate (%)">
                 <input
-                  type="number"
-                  step="0.01"
-                  min={0}
+                  type="text"
+                  inputMode="decimal"
                   {...register("vatRate")}
                   className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
                 />
