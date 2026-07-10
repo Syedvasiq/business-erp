@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionUser } from "@/lib/session";
+import type { PermAction } from "@/lib/permissions";
+
+type PermMap = Record<string, Record<string, Record<PermAction, boolean>>>;
 
 // ── nav definition ────────────────────────────────────────────────────────────
 
@@ -29,21 +32,23 @@ type NavItem = {
   href: string;
   label: string;
   icon: React.ElementType;
-  roles: string[];
+  module: string | null; // null = always visible (dashboard)
+  adminOnly?: boolean;   // only SUPER_ADMIN / ADMIN regardless of perms
   sub?: boolean;
 };
 
 const nav: NavItem[] = [
-  { href: "/",                    label: "Dashboard",       icon: LayoutDashboard, roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT", "SALES", "VIEWER"] },
-  { href: "/customers",           label: "Customers",        icon: Users,           roles: ["SUPER_ADMIN", "ADMIN", "SALES", "VIEWER"] },
-  { href: "/suppliers",           label: "Suppliers",        icon: Truck,           roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT", "VIEWER"] },
-  { href: "/inventory",           label: "Inventory",        icon: Package,         roles: ["SUPER_ADMIN", "ADMIN", "SALES", "VIEWER"] },
-  { href: "/sales",               label: "Sales",            icon: FileText,        roles: ["SUPER_ADMIN", "ADMIN", "SALES", "VIEWER"] },
-  { href: "/purchases",           label: "Purchases",        icon: ShoppingCart,    roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT", "VIEWER"] },
-  { href: "/accounting",          label: "Accounting",       icon: BarChart2,       roles: ["SUPER_ADMIN", "ADMIN", "ACCOUNTANT"] },
-  { href: "/admin/users",         label: "User Management",  icon: ShieldCheck,     roles: ["SUPER_ADMIN", "ADMIN"] },
-  { href: "/admin/permissions",    label: "Roles & Permissions", icon: KeyRound,     roles: ["SUPER_ADMIN", "ADMIN"] },
-  { href: "/settings",            label: "Settings",         icon: Settings,        roles: ["SUPER_ADMIN", "ADMIN"] },
+  { href: "/",                  label: "Dashboard",           icon: LayoutDashboard, module: null },
+  { href: "/customers",         label: "Customers",            icon: Users,           module: "customers" },
+  { href: "/suppliers",         label: "Suppliers",            icon: Truck,           module: "suppliers" },
+  { href: "/inventory",         label: "Inventory",            icon: Package,         module: "inventory" },
+  { href: "/sales",             label: "Sales",                icon: FileText,        module: "sales" },
+  { href: "/purchases",         label: "Purchases",            icon: ShoppingCart,    module: "purchases" },
+  { href: "/commissions",       label: "Commissions",          icon: DollarSign,      module: "commissions" },
+  { href: "/accounting",        label: "Accounting",           icon: BarChart2,       module: "accounting" },
+  { href: "/admin/users",       label: "User Management",      icon: ShieldCheck,     module: "users",    adminOnly: true },
+  { href: "/admin/permissions", label: "Roles & Permissions",  icon: KeyRound,        module: null,       adminOnly: true },
+  { href: "/settings",          label: "Settings",             icon: Settings,        module: "settings", adminOnly: true },
 ];
 
 const roleStyles: Record<string, string> = {
@@ -56,9 +61,20 @@ const roleStyles: Record<string, string> = {
 
 // ── NavContent ────────────────────────────────────────────────────────────────
 
-function NavContent({ user, path, onClose }: { user: SessionUser; path: string; onClose?: () => void }) {
+function NavContent({ user, permissions, path, onClose }: { user: SessionUser; permissions: PermMap | null; path: string; onClose?: () => void }) {
   const router = useRouter();
-  const visibleNav = nav.filter((item) => item.roles.includes(user.role));
+
+  const visibleNav = nav.filter((item) => {
+    if (user.role === "SUPER_ADMIN") return true;
+    if (item.adminOnly) return user.role === "ADMIN" && !item.module
+      ? true
+      : user.role === "ADMIN" && item.module
+        ? (permissions?.[user.role]?.[item.module]?.canView ?? true)
+        : false;
+    if (item.module === null) return true; // dashboard always visible
+    if (user.role === "ADMIN" && !permissions) return true; // no perms set yet
+    return permissions?.[user.role]?.[item.module]?.canView ?? false;
+  });
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -169,7 +185,7 @@ function NavContent({ user, path, onClose }: { user: SessionUser; path: string; 
   );
 }
 
-export function Sidebar({ user }: { user: SessionUser }) {
+export function Sidebar({ user, permissions }: { user: SessionUser; permissions: PermMap | null }) {
   const path = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -179,7 +195,18 @@ export function Sidebar({ user }: { user: SessionUser }) {
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  const visibleNav = nav.filter((item) => item.roles.includes(user.role));
+  const visibleNav = nav.filter((item) => {
+    if (user.role === "SUPER_ADMIN") return true;
+    if (item.adminOnly) return user.role === "ADMIN" && !item.module
+      ? true
+      : user.role === "ADMIN" && item.module
+        ? (permissions?.[user.role]?.[item.module]?.canView ?? true)
+        : false;
+    if (item.module === null) return true;
+    if (user.role === "ADMIN" && !permissions) return true;
+    return permissions?.[user.role]?.[item.module]?.canView ?? false;
+  });
+
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -222,7 +249,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <NavContent user={user} path={path} onClose={() => setMobileOpen(false)} />
+        <NavContent user={user} permissions={permissions} path={path} onClose={() => setMobileOpen(false)} />
       </aside>
 
       {/* Desktop sidebar */}
