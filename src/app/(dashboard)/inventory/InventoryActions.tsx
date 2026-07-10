@@ -32,6 +32,7 @@ function ItemFormFields({
   onCancel,
   submitLabel,
   skuReadOnly = false,
+  uoms,
 }: {
   register: ReturnType<typeof useForm<FormData>>["register"];
   errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
