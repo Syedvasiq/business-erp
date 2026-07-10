@@ -32,6 +32,13 @@ export async function POST(req: NextRequest) {
     let vatTotal = 0;
     const lineData = [];
 
+    // Validate customer ownership
+    const customer = await tx.customer.findUniqueOrThrow({ where: { id: body.customerId } });
+    if (customer.assignedUserId && customer.assignedUserId !== sessionUser.id) {
+      const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(sessionUser.role);
+      if (!isAdmin) throw new Error("This customer is assigned to another staff member.");
+    }
+
     for (const line of body.lines) {
       const item = await tx.item.findUniqueOrThrow({ where: { id: line.itemId } });
       const gross = Number(line.qty) * Number(line.unitPrice);

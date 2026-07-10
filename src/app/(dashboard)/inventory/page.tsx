@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { InventoryActions } from "./InventoryActions";
+import { InventoryActions, InventoryEditButton } from "./InventoryActions";
 import Link from "next/link";
 import {
   Package,
@@ -245,6 +245,9 @@ export default async function InventoryPage() {
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Stock value
                   </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -303,6 +306,19 @@ export default async function InventoryPage() {
 
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">
                       {formatAED(item.stockValue)}
+                    </td>
+
+                    <td className="px-6 py-4 text-right">
+                      <InventoryEditButton
+                        itemId={item.id}
+                        name={item.name}
+                        sku={item.sku}
+                        barcode={item.barcode}
+                        unitCost={item.unitCost}
+                        retailPrice={item.retailPrice}
+                        taxType={item.taxType}
+                        supplierId={item.supplierId}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -390,11 +406,16 @@ export default async function InventoryPage() {
                   <StockBadge qty={item.stockQty} />
                 </div>
 
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-500">
-                  <Boxes size={15} />
-                  Item
-                  <ChevronRight size={15} />
-                </span>
+                <InventoryEditButton
+                  itemId={item.id}
+                  name={item.name}
+                  sku={item.sku}
+                  barcode={item.barcode}
+                  unitCost={item.unitCost}
+                  retailPrice={item.retailPrice}
+                  taxType={item.taxType}
+                  supplierId={item.supplierId}
+                />
               </div>
             </SurfaceCard>
           ))}

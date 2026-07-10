@@ -103,17 +103,18 @@ model JournalLine {
 // ─── CUSTOMERS ───────────────────────────────────────────────────────────────
 
 model Customer {
-  id        String    @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  trn       String?   // 15-digit Tax Registration Number
-  emirate   String?
-  address   String?
-  isB2B     Boolean   @default(false)
-  invoices  Invoice[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  trn            String?   // 15-digit Tax Registration Number
+  emirate        String?
+  address        String?
+  isB2B          Boolean   @default(false)
+  assignedUserId String?
+  invoices       Invoice[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── SUPPLIERS ───────────────────────────────────────────────────────────────

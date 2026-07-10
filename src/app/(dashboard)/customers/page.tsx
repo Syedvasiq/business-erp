@@ -102,6 +102,10 @@ export default async function CustomersPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  // fetch all users for name lookup
+  const users = await prisma.user.findMany({ select: { id: true, name: true } });
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]));
+
   const mappedCustomers = customers.map((c) => {
     const totalRevenue = c.invoices.reduce((sum, i) => sum + Number(i.totalAed), 0);
     const outstanding = c.invoices
@@ -205,6 +209,9 @@ export default async function CustomersPage() {
                     Emirate
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Assigned
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Type
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -242,6 +249,16 @@ export default async function CustomersPage() {
                       {customer.emirate ?? "—"}
                     </td>
 
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {customer.assignedUserId ? (
+                        <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-100">
+                          {userMap[customer.assignedUserId] ?? "—"}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+
                     <td className="px-6 py-4">
                       <CustomerTypeBadge isB2B={customer.isB2B} />
                     </td>
@@ -264,6 +281,7 @@ export default async function CustomersPage() {
                         emirate={customer.emirate}
                         address={customer.address}
                         isB2B={customer.isB2B}
+                        assignedUserId={customer.assignedUserId}
                       />
                     </td>
                   </tr>
@@ -348,6 +366,7 @@ export default async function CustomersPage() {
                   emirate={customer.emirate}
                   address={customer.address}
                   isB2B={customer.isB2B}
+                  assignedUserId={customer.assignedUserId}
                 />
               </div>
             </SurfaceCard>

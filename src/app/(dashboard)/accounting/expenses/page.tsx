@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { ExpenseActions } from "./ExpenseActions";
+import { ExpenseActions, ExpenseEditButton } from "./ExpenseActions";
 import { Receipt, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -69,7 +69,7 @@ export default async function ExpensesPage() {
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  {["Date", "Description", "Category", "Reference", "Amount"].map((h) => (
+                  {["Date", "Description", "Category", "Reference", "Amount", ""].map((h) => (
                     <th key={h} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{h}</th>
                   ))}
                 </tr>
@@ -88,6 +88,16 @@ export default async function ExpensesPage() {
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-slate-500">{e.reference ?? "—"}</td>
                     <td className="px-6 py-4 text-sm font-semibold tabular-nums text-slate-900">{formatAED(Number(e.amount))}</td>
+                    <td className="px-6 py-4 text-right">
+                      <ExpenseEditButton
+                        expenseId={e.id}
+                        description={e.description}
+                        category={e.category}
+                        amount={Number(e.amount)}
+                        date={e.date}
+                        reference={e.reference}
+                      />
+                    </td>
                   </tr>
                 ))}
                 {expenses.length === 0 && (

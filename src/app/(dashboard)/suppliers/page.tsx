@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
-import { SupplierActions } from "./SupplierActions";
+import { SupplierActions, SupplierEditButton } from "./SupplierActions";
 import {
   Truck,
   Building2,
@@ -227,6 +227,9 @@ export default async function SuppliersPage() {
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Total payables
                   </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -263,6 +266,18 @@ export default async function SuppliersPage() {
 
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">
                       {formatAED(supplier.totalPayables)}
+                    </td>
+
+                    <td className="px-6 py-4 text-right">
+                      <SupplierEditButton
+                        supplierId={supplier.id}
+                        name={supplier.name}
+                        email={supplier.email}
+                        phone={supplier.phone}
+                        trn={supplier.trn}
+                        vendorType={supplier.vendorType}
+                        currency={supplier.currency}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -340,10 +355,15 @@ export default async function SuppliersPage() {
                   <ReceiptText size={14} />
                   Vendor summary
                 </div>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-500">
-                  Details
-                  <ChevronRight size={15} />
-                </span>
+                <SupplierEditButton
+                  supplierId={supplier.id}
+                  name={supplier.name}
+                  email={supplier.email}
+                  phone={supplier.phone}
+                  trn={supplier.trn}
+                  vendorType={supplier.vendorType}
+                  currency={supplier.currency}
+                />
               </div>
             </SurfaceCard>
           ))}

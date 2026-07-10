@@ -18,6 +18,7 @@ type FormData = {
   emirate: string;
   address: string;
   isB2B: string;
+  assignedUserId: string;
 };
 
 // ── Shared form fields ────────────────────────────────────────────────────────
@@ -27,12 +28,14 @@ function CustomerForm({
   isSubmitting,
   onCancel,
   submitLabel,
+  users,
 }: {
   register: ReturnType<typeof useForm<FormData>>["register"];
   errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
   isSubmitting: boolean;
   onCancel: () => void;
   submitLabel: string;
+  users: { id: string; name: string; role: string }[];
 }) {
   return (
     <div className="space-y-5">
@@ -94,6 +97,29 @@ function CustomerForm({
         </div>
       </div>
 
+      {/* Assigned staff */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Assignment
+        </p>
+        <div className="mt-3">
+          <Select
+            label="Assigned Staff (optional)"
+            options={[
+              { value: "", label: "— No assignment (visible to all) —" },
+              ...users.map((u) => ({
+                value: u.id,
+                label: `${u.name} (${u.role.replace("_", " ")})`,
+              })),
+            ]}
+            {...register("assignedUserId")}
+          />
+          <p className="mt-1.5 text-xs text-slate-400">
+            If assigned, only that staff member can select this customer in sales invoices.
+          </p>
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
@@ -135,8 +161,10 @@ export function CustomerEditButton(props: {
   emirate?: string | null;
   address?: string | null;
   isB2B: boolean;
+  assignedUserId?: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const router = useRouter();
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -148,11 +176,13 @@ export function CustomerEditButton(props: {
       emirate: props.emirate ?? "",
       address: props.address ?? "",
       isB2B: props.isB2B ? "true" : "false",
+      assignedUserId: props.assignedUserId ?? "",
     },
   });
 
   useEffect(() => {
     if (open) {
+      fetch("/api/users").then((r) => r.json()).then(setUsers);
       reset({
         name: props.name,
         email: props.email ?? "",
@@ -161,6 +191,7 @@ export function CustomerEditButton(props: {
         emirate: props.emirate ?? "",
         address: props.address ?? "",
         isB2B: props.isB2B ? "true" : "false",
+        assignedUserId: props.assignedUserId ?? "",
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,7 +201,11 @@ export function CustomerEditButton(props: {
     const res = await fetch(`/api/customers/${props.customerId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, isB2B: data.isB2B === "true" }),
+      body: JSON.stringify({
+        ...data,
+        isB2B: data.isB2B === "true",
+        assignedUserId: data.assignedUserId || null,
+      }),
     });
     if (res.ok) {
       setOpen(false);
@@ -208,6 +243,7 @@ export function CustomerEditButton(props: {
               isSubmitting={isSubmitting}
               onCancel={() => setOpen(false)}
               submitLabel="Save Changes"
+              users={users}
             />
           </form>
         </div>
@@ -219,11 +255,16 @@ export function CustomerEditButton(props: {
 // ── New Customer button (toolbar) ─────────────────────────────────────────────
 export function CustomerActions() {
   const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const router = useRouter();
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
-    defaultValues: { name: "", email: "", phone: "", trn: "", emirate: "", address: "", isB2B: "false" },
+    defaultValues: { name: "", email: "", phone: "", trn: "", emirate: "", address: "", isB2B: "false", assignedUserId: "" },
   });
+
+  useEffect(() => {
+    if (open) fetch("/api/users").then((r) => r.json()).then(setUsers);
+  }, [open]);
 
   const closeModal = () => { reset(); setOpen(false); };
 
@@ -231,7 +272,11 @@ export function CustomerActions() {
     await fetch("/api/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, isB2B: data.isB2B === "true" }),
+      body: JSON.stringify({
+        ...data,
+        isB2B: data.isB2B === "true",
+        assignedUserId: data.assignedUserId || null,
+      }),
     });
     reset();
     setOpen(false);
@@ -268,6 +313,7 @@ export function CustomerActions() {
               isSubmitting={isSubmitting}
               onCancel={closeModal}
               submitLabel="Save Customer"
+              users={users}
             />
           </form>
         </div>
