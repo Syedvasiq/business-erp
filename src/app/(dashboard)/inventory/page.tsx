@@ -257,10 +257,13 @@ export default async function InventoryPage() {
                     key={item.id}
                     className="border-b border-slate-100 transition hover:bg-slate-50/80"
                   >
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-semibold text-slate-900">{item.name}</p>
-                      </div>
+                    <td className="px-6 py-4 max-w-[180px]">
+                      <p
+                        className="font-semibold text-slate-900 truncate"
+                        title={item.name}
+                      >
+                        {item.name}
+                      </p>
                     </td>
 
                     <td className="px-6 py-4">
@@ -269,10 +272,17 @@ export default async function InventoryPage() {
                       </span>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600">
-                        {item.supplier?.name ?? <span className="text-slate-400">—</span>}
-                      </span>
+                    <td className="px-6 py-4 max-w-[140px]">
+                      {item.supplier?.name ? (
+                        <span
+                          className="text-sm text-slate-600 truncate block"
+                          title={item.supplier.name}
+                        >
+                          {item.supplier.name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
 
                     <td className="px-6 py-4">
