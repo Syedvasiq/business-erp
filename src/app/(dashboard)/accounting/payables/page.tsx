@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, ShoppingCart, FileX, DollarSign, Clock } from "lucide-react";
+import { ArrowLeft, ShoppingCart, FileX, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { CreditNoteButton } from "../CreditNoteButton";
 import { MarkPaidButton } from "../MarkPaidButton";
 
@@ -41,11 +41,17 @@ function AgeBadge({ days }: { days: number }) {
 export default async function PayablesPage() {
   const today = new Date();
 
-  const [orders, creditNotes, suppliers] = await Promise.all([
+  const [orders, paidOrders, creditNotes, suppliers] = await Promise.all([
     prisma.purchaseOrder.findMany({
       where: { status: { in: ["RECEIVED"] } },
       include: { supplier: true },
       orderBy: { orderDate: "asc" },
+    }),
+    prisma.purchaseOrder.findMany({
+      where: { status: "PAID" },
+      include: { supplier: true, payments: true },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
     }),
     prisma.creditNote.findMany({
       where: { type: "SUPPLIER" },
@@ -91,6 +97,7 @@ export default async function PayablesPage() {
           <StatCard title="Total AP" value={formatAED(totalAP)} sub="Gross payable" icon={<DollarSign size={20} />} tone="amber" />
           <StatCard title="Debit notes" value={formatAED(totalCN)} sub={`${creditNotes.length} notes raised`} icon={<FileX size={20} />} tone="rose" />
           <StatCard title="Net payable" value={formatAED(netAP)} sub="After debit notes" icon={<Clock size={20} />} tone="emerald" />
+          <StatCard title="Paid POs" value={String(paidOrders.length)} sub="Settled purchase orders" icon={<CheckCircle size={20} />} tone="emerald" />
         </section>
 
         {/* Purchase Orders */}
@@ -125,6 +132,49 @@ export default async function PayablesPage() {
                       <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(Number(po.totalAed))}</td>
                       <td className="px-5 py-4">
                         <MarkPaidButton purchaseOrderId={po.id} label="Mark Paid" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Paid Purchase Orders */}
+        <Card className="overflow-hidden">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="text-base font-semibold text-slate-900">Paid Purchase Orders</h2>
+            <p className="mt-1 text-sm text-slate-500">{paidOrders.length} POs settled · Showing last 20</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  {["PO Number", "Supplier", "Order Date", "Total", "Payment Method", "Paid On"].map((h) => (
+                    <th key={h} className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paidOrders.length === 0 && (
+                  <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-400">No paid POs yet</td></tr>
+                )}
+                {paidOrders.map((po) => {
+                  const lastPayment = po.payments[po.payments.length - 1];
+                  return (
+                    <tr key={po.id} className="border-b border-slate-100 transition hover:bg-slate-50/80">
+                      <td className="px-5 py-4 font-mono text-sm font-semibold text-slate-700">{po.number}</td>
+                      <td className="px-5 py-4 text-sm font-medium text-slate-800">{po.supplier.name}</td>
+                      <td className="px-5 py-4 text-sm text-slate-500">{new Date(po.orderDate).toLocaleDateString("en-AE")}</td>
+                      <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(Number(po.totalAed))}</td>
+                      <td className="px-5 py-4">
+                        {lastPayment
+                          ? <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">{lastPayment.method.replace("_", " ")}</span>
+                          : <span className="text-slate-300 text-sm">—</span>}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-500">
+                        {lastPayment ? new Date(lastPayment.date).toLocaleDateString("en-AE") : "—"}
                       </td>
                     </tr>
                   );
