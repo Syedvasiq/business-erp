@@ -629,10 +629,10 @@ export function EditInvoiceButton({ invoiceId }: { invoiceId: string }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-blue-50 hover:text-blue-700"
+        aria-label="Edit invoice"
       >
-        <Pencil size={13} />
-        Edit
+        <Pencil size={14} />
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="" className="max-w-5xl">
