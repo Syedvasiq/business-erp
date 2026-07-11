@@ -11,7 +11,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const item = await prisma.item.update({ where: { id }, data: body });
+  // Strip fields managed by the system — never allow direct overwrite
+  const { stockQty: _sq, weightedAvgCost: _wac, ...safeData } = body;
+  const item = await prisma.item.update({ where: { id }, data: safeData });
   return NextResponse.json(item);
 }
 

@@ -36,13 +36,16 @@ export async function POST(req: NextRequest) {
 
   const ref = `EXP-${exp.id.slice(0, 8)}`;
 
-  // Post journal OUTSIDE transaction to avoid Neon deadlock
-  await postJournal(ref, description, new Date(exp.date), [
-    { accountCode: "5300", type: "DEBIT",  amount: Number(amount) },
-    { accountCode: "1000", type: "CREDIT", amount: Number(amount) },
-  ]);
-
-  await prisma.expense.update({ where: { id: exp.id }, data: { journalRef: ref } });
+  try {
+    await postJournal(ref, description, new Date(exp.date), [
+      { accountCode: "5300", type: "DEBIT",  amount: Number(amount) },
+      { accountCode: "1000", type: "CREDIT", amount: Number(amount) },
+    ]);
+    await prisma.expense.update({ where: { id: exp.id }, data: { journalRef: ref } });
+  } catch (journalErr) {
+    await prisma.expense.delete({ where: { id: exp.id } }).catch(() => {});
+    throw journalErr;
+  }
 
   return NextResponse.json(exp, { status: 201 });
 }

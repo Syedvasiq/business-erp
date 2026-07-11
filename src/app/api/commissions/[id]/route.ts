@@ -17,13 +17,17 @@ export async function PUT(_: NextRequest, { params }: { params: Promise<{ id: st
   const commission = await prisma.commission.findUniqueOrThrow({ where: { id } });
   if (commission.isPaid) return NextResponse.json({ error: "Already paid" }, { status: 409 });
 
-  await prisma.$transaction(async (tx) => {
-    await tx.commission.update({ where: { id }, data: { isPaid: true } });
-    await postJournal(`COMM-PAY-${id.slice(0, 8)}`, `Commission payout`, new Date(), [
-      { accountCode: "2300", type: "DEBIT", amount: Number(commission.totalPayout) },
+  const ref = `COMM-PAY-${id.slice(0, 8)}`;
+  const existingJournal = await prisma.journal.findUnique({ where: { reference: ref } });
+
+  await prisma.commission.update({ where: { id }, data: { isPaid: true } });
+
+  if (!existingJournal) {
+    await postJournal(ref, `Commission payout`, new Date(), [
+      { accountCode: "2300", type: "DEBIT",  amount: Number(commission.totalPayout) },
       { accountCode: "1000", type: "CREDIT", amount: Number(commission.totalPayout) },
     ]);
-  });
+  }
 
   return NextResponse.json({ success: true });
 }

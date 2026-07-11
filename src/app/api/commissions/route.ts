@@ -22,35 +22,21 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const result = await prisma.$transaction(async (tx) => {
-    const agent   = await tx.agent.findUniqueOrThrow({ where: { id: body.agentId } });
-    const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: body.invoiceId } });
+  const agent   = await prisma.agent.findUniqueOrThrow({ where: { id: body.agentId } });
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: body.invoiceId } });
 
-    if (invoice.status === "CANCELLED") {
-      throw new Error("Cannot assign a commission to a cancelled invoice");
-    }
+  if (invoice.status === "CANCELLED") {
+    throw new Error("Cannot assign a commission to a cancelled invoice");
+  }
 
-    // Always calculate on subtotalAed (ex-VAT)
-    const baseAmount  = Number(invoice.subtotalAed);
-    const commAmount  = (baseAmount * Number(agent.rate)) / 100;
-    // External agents charge VAT on their commission invoice
-    const vatOnComm   = !agent.isInternal ? commAmount * VAT_RATE : 0;
-    const totalPayout = commAmount + vatOnComm;
+  const baseAmount  = Number(invoice.subtotalAed);
+  const commAmount  = (baseAmount * Number(agent.rate)) / 100;
+  const vatOnComm   = !agent.isInternal ? commAmount * VAT_RATE : 0;
+  const totalPayout = commAmount + vatOnComm;
 
-    const commission = await tx.commission.create({
-      data: {
-        agentId:     agent.id,
-        invoiceId:   invoice.id,
-        baseAmount,
-        rate:        agent.rate,
-        vatOnComm,
-        totalPayout,
-        isPaid:      false,   // journal posts when invoice is marked PAID
-      },
-    });
-
-    return commission;
+  const commission = await prisma.commission.create({
+    data: { agentId: agent.id, invoiceId: invoice.id, baseAmount, rate: agent.rate, vatOnComm, totalPayout, isPaid: false },
   });
 
-  return NextResponse.json(result, { status: 201 });
+  return NextResponse.json(commission, { status: 201 });
 }

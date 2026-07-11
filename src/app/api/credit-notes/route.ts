@@ -57,8 +57,12 @@ export async function POST(req: NextRequest) {
           ...(vatAmount > 0 ? [{ accountCode: "1200", type: "CREDIT" as const, amount: vatAmount }] : []),
         ];
 
-  // Post journal OUTSIDE transaction to avoid Neon deadlock
-  await postJournal(number, `Credit Note — ${body.reason}`, cn.date, journalLines);
+  try {
+    await postJournal(number, `Credit Note — ${body.reason}`, cn.date, journalLines);
+  } catch (journalErr) {
+    await prisma.creditNote.delete({ where: { id: cn.id } }).catch(() => {});
+    throw journalErr;
+  }
 
   return NextResponse.json(cn, { status: 201 });
 }
@@ -68,35 +72,28 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
 
   if (body.invoiceId) {
-    const inv = await prisma.invoice.update({
-      where: { id: body.invoiceId },
-      data: { status: "PAID" },
-    });
-    // Post journal: DR AR, CR Cash
-    await postJournal(
-      `PMT-${inv.number}`,
-      `Payment received — ${inv.number}`,
-      new Date(),
-      [
+    const inv = await prisma.invoice.update({ where: { id: body.invoiceId }, data: { status: "PAID" } });
+    const pmtRef = `PMT-${inv.number}`;
+    const existingPmt = await prisma.journal.findUnique({ where: { reference: pmtRef } });
+    if (!existingPmt) {
+      await postJournal(pmtRef, `Payment received — ${inv.number}`, new Date(), [
         { accountCode: "1000", type: "DEBIT"  as const, amount: Number(inv.totalAed) },
         { accountCode: "1100", type: "CREDIT" as const, amount: Number(inv.totalAed) },
-      ]
-    );
+      ]);
+    }
     return NextResponse.json(inv);
   }
 
   if (body.purchaseOrderId) {
-    // For POs "mark paid" means we record the payment to supplier
     const po = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: body.purchaseOrderId } });
-    await postJournal(
-      `PMT-${po.number}`,
-      `Payment to supplier — ${po.number}`,
-      new Date(),
-      [
+    const pmtRef = `PMT-${po.number}`;
+    const existingPmt = await prisma.journal.findUnique({ where: { reference: pmtRef } });
+    if (!existingPmt) {
+      await postJournal(pmtRef, `Payment to supplier — ${po.number}`, new Date(), [
         { accountCode: "2000", type: "DEBIT"  as const, amount: Number(po.totalAed) },
         { accountCode: "1000", type: "CREDIT" as const, amount: Number(po.totalAed) },
-      ]
-    );
+      ]);
+    }
     return NextResponse.json({ ok: true });
   }
 
