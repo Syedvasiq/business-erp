@@ -31,6 +31,11 @@ export const UAE_EMIRATES = [
   "Fujairah",
 ];
 
+export function validate(rules: [boolean, string][]) {
+  const failed = rules.find(([ok]) => !ok);
+  if (failed) throw new Error(failed[1]);
+}
+
 export const VAT_RATE = 0.05;
 export const CT_FREE_THRESHOLD = 375000;
 export const CT_RATE = 0.09;

@@ -31,6 +31,7 @@ export function PurchaseActions() {
   const [items, setItems] = useState<any[]>([]);
   const [vatRate, setVatRate] = useState(0.05);
   const [lineUoms, setLineUoms] = useState<string[]>([""]);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const {
@@ -109,6 +110,7 @@ export function PurchaseActions() {
   const { subtotal, inputVat, customsDuty, shippingCost, total } = calcTotals();
 
   const closeModal = () => {
+    setError("");
     setLineUoms([""]);
     reset({
       supplierId: "",
@@ -122,6 +124,7 @@ export function PurchaseActions() {
   };
 
   const onSubmit = async (data: FormData) => {
+    setError("");
     const res = await fetch("/api/purchases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -141,6 +144,9 @@ export function PurchaseActions() {
     if (res.ok) {
       closeModal();
       router.refresh();
+    } else {
+      const json = await res.json().catch(() => ({}));
+      setError(json.error ?? "Failed to create purchase order.");
     }
   };
 
@@ -391,6 +397,7 @@ export function PurchaseActions() {
             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
+              {error && <p className="flex-1 text-sm font-medium text-red-600">{error}</p>}
               <Button
                 type="button"
                 variant="secondary"
@@ -433,6 +440,7 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
   const [items, setItems] = useState<any[]>([]);
   const [vatRate, setVatRate] = useState(0.05);
   const [lineUoms, setLineUoms] = useState<string[]>([]);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const { register, handleSubmit, control, watch, reset, setValue, formState: { isSubmitting } } =
@@ -499,6 +507,7 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
   const { subtotal, inputVat, customsDuty, shippingCost, total } = calcTotals();
 
   const onSubmit = async (data: EditFormData) => {
+    setError("");
     const res = await fetch(`/api/purchases/${purchaseId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -514,8 +523,8 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
     });
     if (res.ok) { setOpen(false); router.refresh(); }
     else {
-      const err = await res.json().catch(() => ({}));
-      alert(`Save failed: ${err?.error ?? err?.detail ?? res.status}`);
+      const json = await res.json().catch(() => ({}));
+      setError(json.error ?? "Failed to save changes.");
     }
   };
 
@@ -658,6 +667,7 @@ export function PurchaseEditButton({ purchaseId }: { purchaseId: string }) {
             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
+              {error && <p className="flex-1 text-sm font-medium text-red-600">{error}</p>}
               <Button type="button" variant="secondary" onClick={() => setOpen(false)} className="min-h-[44px] rounded-2xl">Cancel</Button>
               <Button type="submit" disabled={isSubmitting}
                 className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">

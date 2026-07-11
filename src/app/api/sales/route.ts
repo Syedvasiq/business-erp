@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { postJournal } from "@/lib/journal";
-import { generateDocNumber } from "@/lib/utils";
+import { generateDocNumber, validate } from "@/lib/utils";
 import { requireSession } from "@/lib/session";
 import { getSettings } from "@/lib/settings";
 
@@ -21,6 +21,21 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   try {
+    validate([
+      [!!body.customerId, "Please select a customer."],
+      [Array.isArray(body.lines) && body.lines.length > 0, "Add at least one line item."],
+      ...((body.lines ?? []) as any[]).map((l: any, i: number) => [
+        !!l.itemId, `Line ${i + 1}: please select an item.`
+      ] as [boolean, string]),
+      ...((body.lines ?? []) as any[]).map((l: any, i: number) => [
+        Number(l.qty) > 0, `Line ${i + 1}: qty must be greater than 0.`
+      ] as [boolean, string]),
+      ...((body.lines ?? []) as any[]).map((l: any, i: number) => [
+        Number(l.unitPrice) > 0, `Line ${i + 1}: unit price must be greater than 0.`
+      ] as [boolean, string]),
+      [Number(body.exchangeRate ?? 1) > 0, "Exchange rate must be greater than 0."],
+    ]);
+
     const { vatRate: vatRatePct } = await getSettings();
     const VAT_RATE = vatRatePct / 100;
 
