@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
     const count = await prisma.invoice.count();
     const number = generateDocNumber("INV", count + 1);
 
+    // Guard: if this number already exists (retry scenario), return it
+    const existing = await prisma.invoice.findUnique({ where: { number } });
+    if (existing) return NextResponse.json(existing, { status: 201 });
     let subtotal = 0;
     let vatTotal = 0;
     const lineData: any[] = [];
@@ -106,18 +109,22 @@ export async function POST(req: NextRequest) {
     }
 
     const cogsTotal = lineData.reduce((s: number, l: any) => s + l.cogsCost, 0);
-    await postJournal(
-      invoice.number,
-      `Sale to customer - ${invoice.number}`,
-      invoice.issueDate,
-      [
-        { accountCode: "1100", type: "DEBIT",  amount: totalAed },
-        { accountCode: "4000", type: "CREDIT", amount: subtotal },
-        { accountCode: "2100", type: "CREDIT", amount: vatTotal },
-        { accountCode: "5000", type: "DEBIT",  amount: cogsTotal },
-        { accountCode: "1300", type: "CREDIT", amount: cogsTotal },
-      ]
-    );
+    // Skip if journal already posted (idempotent on retry)
+    const existingJournal = await prisma.journal.findUnique({ where: { reference: invoice.number } });
+    if (!existingJournal) {
+      await postJournal(
+        invoice.number,
+        `Sale to customer - ${invoice.number}`,
+        invoice.issueDate,
+        [
+          { accountCode: "1100", type: "DEBIT",  amount: totalAed },
+          { accountCode: "4000", type: "CREDIT", amount: subtotal },
+          { accountCode: "2100", type: "CREDIT", amount: vatTotal },
+          { accountCode: "5000", type: "DEBIT",  amount: cogsTotal },
+          { accountCode: "1300", type: "CREDIT", amount: cogsTotal },
+        ]
+      );
+    }
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (e: any) {
