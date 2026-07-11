@@ -14,103 +14,83 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { vatRate: vatRatePct } = await getSettings();
-  const VAT_RATE = vatRatePct / 100;
+  try {
+    const { vatRate: vatRatePct } = await getSettings();
+    const VAT_RATE = vatRatePct / 100;
 
-  let poResult: any;
-
-  const result = await prisma.$transaction(async (tx) => {
-    const count = await tx.purchaseOrder.count();
+    const count = await prisma.purchaseOrder.count();
     const number = generateDocNumber("PO", count + 1);
 
-    const supplier = await tx.supplier.findUniqueOrThrow({ where: { id: body.supplierId } });
+    // Idempotency guard
+    const existing = await prisma.purchaseOrder.findUnique({ where: { number } });
+    if (existing) return NextResponse.json(existing, { status: 201 });
+
+    const supplier = await prisma.supplier.findUniqueOrThrow({ where: { id: body.supplierId } });
     const isRcm = supplier.vendorType === "INTERNATIONAL" || supplier.vendorType === "FREE_ZONE";
 
-    let subtotal = 0;
-    let inputVat = 0;
-    const lineData = [];
+    let subtotal = 0, inputVat = 0;
+    const lineData: any[] = [];
 
     for (const line of body.lines) {
       const lineSubtotal = Number(line.qty) * Number(line.unitCost);
       const vat = isRcm ? 0 : lineSubtotal * VAT_RATE;
       subtotal += lineSubtotal;
       inputVat += vat;
-
-      lineData.push({
-        itemId: line.itemId,
-        qty: line.qty,
-        unitCost: line.unitCost,
-        vatAmount: vat,
-        lineTotal: lineSubtotal + vat,
-      });
+      lineData.push({ itemId: line.itemId, qty: line.qty, unitCost: line.unitCost, vatAmount: vat, lineTotal: lineSubtotal + vat });
     }
 
-    const landingCostPerUnit =
-      body.lines.length > 0
-        ? (Number(body.customsDuty ?? 0) + Number(body.shippingCost ?? 0)) /
-          body.lines.reduce((s: number, l: any) => s + Number(l.qty), 0)
-        : 0;
-
+    const totalQty = body.lines.reduce((s: number, l: any) => s + Number(l.qty), 0);
+    const landingCostPerUnit = totalQty > 0
+      ? (Number(body.customsDuty ?? 0) + Number(body.shippingCost ?? 0)) / totalQty : 0;
     const customsDuty = Number(body.customsDuty ?? 0);
     const shippingCost = Number(body.shippingCost ?? 0);
     const totalAed = (subtotal + inputVat + customsDuty + shippingCost) * Number(body.exchangeRate ?? 1);
 
-    const po = await tx.purchaseOrder.create({
+    const po = await prisma.purchaseOrder.create({
       data: {
-        number,
-        supplierId: body.supplierId,
-        status: "RECEIVED",
-        currency: body.currency ?? "AED",
-        exchangeRate: body.exchangeRate ?? 1,
-        subtotalAed: subtotal,
-        inputVat,
-        customsDuty,
-        shippingCost,
-        totalAed,
-        isRcm,
+        number, supplierId: body.supplierId, status: "RECEIVED",
+        currency: body.currency ?? "AED", exchangeRate: body.exchangeRate ?? 1,
+        subtotalAed: subtotal, inputVat, customsDuty, shippingCost, totalAed, isRcm,
         lines: { create: lineData },
       },
       include: { lines: true },
     });
 
-    // Update stock and weighted average cost
-    for (const line of po.lines) {
-      const item = await tx.item.findUniqueOrThrow({ where: { id: line.itemId } });
-      const newQty = Number(item.stockQty) + Number(line.qty);
-      const newAvgCost =
-        (Number(item.weightedAvgCost) * Number(item.stockQty) +
-          (Number(line.unitCost) + landingCostPerUnit) * Number(line.qty)) /
-        newQty;
+    // Update stock — compensate on journal failure
+    const stockSnapshots: { id: string; stockQty: number; weightedAvgCost: number }[] = [];
+    try {
+      for (const line of po.lines) {
+        const item = await prisma.item.findUniqueOrThrow({ where: { id: line.itemId } });
+        stockSnapshots.push({ id: item.id, stockQty: Number(item.stockQty), weightedAvgCost: Number(item.weightedAvgCost) });
+        const newQty = Number(item.stockQty) + Number(line.qty);
+        const newAvgCost = (Number(item.weightedAvgCost) * Number(item.stockQty) +
+          (Number(line.unitCost) + landingCostPerUnit) * Number(line.qty)) / newQty;
+        await prisma.item.update({ where: { id: item.id }, data: { stockQty: newQty, weightedAvgCost: newAvgCost } });
+      }
 
-      await tx.item.update({
-        where: { id: line.itemId },
-        data: { stockQty: newQty, weightedAvgCost: newAvgCost },
-      });
+      const journalLines: any[] = [{ accountCode: "1300", type: "DEBIT", amount: subtotal }];
+      if (inputVat > 0) journalLines.push({ accountCode: "1200", type: "DEBIT", amount: inputVat });
+      if (isRcm) {
+        const rcmVat = subtotal * VAT_RATE;
+        journalLines.push({ accountCode: "1200", type: "DEBIT", amount: rcmVat });
+        journalLines.push({ accountCode: "2200", type: "CREDIT", amount: rcmVat });
+      }
+      if (customsDuty + shippingCost > 0)
+        journalLines.push({ accountCode: "5200", type: "DEBIT", amount: customsDuty + shippingCost });
+      journalLines.push({ accountCode: "2000", type: "CREDIT", amount: totalAed });
+
+      await postJournal(po.number, `Purchase from ${supplier.name}`, new Date(), journalLines);
+    } catch (innerErr) {
+      // Compensate: restore stock, delete PO
+      for (const snap of stockSnapshots)
+        await prisma.item.update({ where: { id: snap.id }, data: { stockQty: snap.stockQty, weightedAvgCost: snap.weightedAvgCost } }).catch(() => {});
+      await prisma.purchaseOrderLine.deleteMany({ where: { purchaseOrderId: po.id } }).catch(() => {});
+      await prisma.purchaseOrder.delete({ where: { id: po.id } }).catch(() => {});
+      throw innerErr;
     }
 
-    poResult = { po, supplier, subtotal, inputVat, customsDuty, shippingCost, totalAed, isRcm };
-    return po;
-  });
-
-  // Post journal OUTSIDE transaction to avoid Neon deadlock
-  const { po, supplier, subtotal, inputVat, customsDuty, shippingCost, totalAed, isRcm } = poResult;
-  const VAT_RATE2 = VAT_RATE;
-
-  const journalLines: any[] = [
-    { accountCode: "1300", type: "DEBIT",  amount: subtotal },
-  ];
-  if (inputVat > 0) journalLines.push({ accountCode: "1200", type: "DEBIT", amount: inputVat });
-  if (isRcm) {
-    const rcmVat = subtotal * VAT_RATE2;
-    journalLines.push({ accountCode: "1200", type: "DEBIT",  amount: rcmVat });
-    journalLines.push({ accountCode: "2200", type: "CREDIT", amount: rcmVat });
+    return NextResponse.json(po, { status: 201 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 });
   }
-  if (customsDuty + shippingCost > 0) {
-    journalLines.push({ accountCode: "5200", type: "DEBIT", amount: customsDuty + shippingCost });
-  }
-  journalLines.push({ accountCode: "2000", type: "CREDIT", amount: totalAed });
-
-  await postJournal(`${po.number}-${Date.now()}`, `Purchase from ${supplier.name}`, new Date(), journalLines);
-
-  return NextResponse.json(result, { status: 201 });
 }

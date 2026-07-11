@@ -229,29 +229,30 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   const cogsTotal = invoice.lines.reduce((s, l) => s + Number(l.cogsCost), 0);
 
-  await prisma.$transaction(async (tx) => {
-    for (const line of invoice.lines) {
-      await tx.item.update({
-        where: { id: line.itemId },
-        data: { stockQty: { increment: Number(line.qty) } },
-      });
-    }
-    await tx.commission.deleteMany({ where: { invoiceId: id, isPaid: false } });
-    await tx.invoice.update({ where: { id }, data: { status: "CANCELLED" } });
-  });
+  // Restore stock
+  for (const line of invoice.lines)
+    await prisma.item.update({ where: { id: line.itemId }, data: { stockQty: { increment: Number(line.qty) } } });
 
-  await postJournal(
-    `REV-${invoice.number}`,
-    `Reversal of ${invoice.number}`,
-    new Date(),
-    [
-      { accountCode: "4000", type: "DEBIT",  amount: Number(invoice.subtotalAed) },
-      { accountCode: "2100", type: "DEBIT",  amount: Number(invoice.vatAmount) },
-      { accountCode: "1100", type: "CREDIT", amount: Number(invoice.totalAed) },
-      { accountCode: "1300", type: "DEBIT",  amount: cogsTotal },
-      { accountCode: "5000", type: "CREDIT", amount: cogsTotal },
-    ]
-  );
+  await prisma.commission.deleteMany({ where: { invoiceId: id, isPaid: false } });
+  await prisma.invoice.update({ where: { id }, data: { status: "CANCELLED" } });
+
+  // Post reversal journal — if it fails, invoice is already cancelled (acceptable; journal can be posted manually)
+  const revRef = `REV-${invoice.number}`;
+  const existingRev = await prisma.journal.findUnique({ where: { reference: revRef } });
+  if (!existingRev) {
+    await postJournal(
+      revRef,
+      `Reversal of ${invoice.number}`,
+      new Date(),
+      [
+        { accountCode: "4000", type: "DEBIT",  amount: Number(invoice.subtotalAed) },
+        { accountCode: "2100", type: "DEBIT",  amount: Number(invoice.vatAmount) },
+        { accountCode: "1100", type: "CREDIT", amount: Number(invoice.totalAed) },
+        { accountCode: "1300", type: "DEBIT",  amount: cogsTotal },
+        { accountCode: "5000", type: "CREDIT", amount: cogsTotal },
+      ]
+    );
+  }
 
   return NextResponse.json({ success: true });
 }
