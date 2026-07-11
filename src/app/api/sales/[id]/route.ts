@@ -111,8 +111,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
       // 6. Reverse old journal, post new one
       const cogsTotal = lineData.reduce((s, l) => s + l.cogsCost, 0);
+      const uid = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
       await postJournal(
-        `REV-${fullInvoice.number}-${Date.now()}`,
+        `REV-${fullInvoice.number}-${uid}`,
         `Edit reversal of ${fullInvoice.number}`,
         new Date(),
         [
@@ -124,7 +125,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ]
       );
       await postJournal(
-        `${fullInvoice.number}-E${Date.now()}`,
+        `${fullInvoice.number}-E${uid}`,
         `Edited sale - ${fullInvoice.number}`,
         body.invoiceDate ? new Date(body.invoiceDate) : new Date(),
         [
@@ -142,72 +143,69 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  const { updatedInvoice, journals } = await prisma.$transaction(async (tx) => {
-    const updatedInvoice = await tx.invoice.update({
-      where: { id },
-      data: { status: body.status },
-    });
+  // Status / payment update — sequential queries, no transaction (avoids Neon timeout)
+  const updatedInvoice = await prisma.invoice.update({
+    where: { id },
+    data: { status: body.status },
+  });
 
-    const journals: { ref: string; desc: string; date: Date; lines: any[] }[] = [];
+  const journals: { ref: string; desc: string; date: Date; lines: any[] }[] = [];
 
-    if (body.status === "PAID" || body.status === "PARTIALLY_PAID") {
-      const unpaidCommissions = invoice.commissions.filter((c) => !c.isPaid);
+  if (body.status === "PAID" || body.status === "PARTIALLY_PAID") {
+    const unpaidCommissions = invoice.commissions.filter((c) => !c.isPaid);
 
-      if (body.status === "PAID") {
-        for (const comm of unpaidCommissions) {
-          const commAmount = Number(comm.totalPayout) - Number(comm.vatOnComm);
-          const vatOnComm  = Number(comm.vatOnComm);
-          const total      = Number(comm.totalPayout);
-          const commRef    = `COMM-${comm.id.slice(0, 8)}`;
-          journals.push({
-            ref: commRef,
-            desc: `Commission for invoice ${invoice.number} — agent ${comm.agent.name}`,
-            date: new Date(),
-            lines: [
-              { accountCode: "5100", type: "DEBIT",  amount: commAmount },
-              ...(vatOnComm > 0 ? [{ accountCode: "1200", type: "DEBIT" as const, amount: vatOnComm }] : []),
-              { accountCode: "2300", type: "CREDIT", amount: total },
-            ],
-          });
-          await tx.commission.update({
-            where: { id: comm.id },
-            data: { journalRef: commRef },
-          });
-        }
+    if (body.status === "PAID") {
+      for (const comm of unpaidCommissions) {
+        const commAmount = Number(comm.totalPayout) - Number(comm.vatOnComm);
+        const vatOnComm  = Number(comm.vatOnComm);
+        const total      = Number(comm.totalPayout);
+        const commRef    = `COMM-${comm.id.slice(0, 8)}-${crypto.randomUUID().slice(0, 6)}`;
+        journals.push({
+          ref: commRef,
+          desc: `Commission for invoice ${invoice.number} — agent ${comm.agent.name}`,
+          date: new Date(),
+          lines: [
+            { accountCode: "5100", type: "DEBIT",  amount: commAmount },
+            ...(vatOnComm > 0 ? [{ accountCode: "1200", type: "DEBIT" as const, amount: vatOnComm }] : []),
+            { accountCode: "2300", type: "CREDIT", amount: total },
+          ],
+        });
+        await prisma.commission.update({
+          where: { id: comm.id },
+          data: { journalRef: commRef },
+        });
       }
-
-      const paymentAmount = body.payment?.amount ?? Number(invoice.totalAed);
-      const journalRef = `PAY-${invoice.number}-${Date.now()}`;
-
-      await tx.payment.create({
-        data: {
-          invoiceId: id,
-          method: body.payment?.method ?? "CASH",
-          amount: paymentAmount,
-          date: body.payment?.date ? new Date(body.payment.date) : new Date(),
-          bankName:      body.payment?.bankName      || null,
-          transactionId: body.payment?.transactionId || null,
-          chequeNumber:  body.payment?.chequeNumber  || null,
-          chequeDate:    body.payment?.chequeDate ? new Date(body.payment.chequeDate) : null,
-          chequeBank:    body.payment?.chequeBank    || null,
-          notes:         body.payment?.notes         || null,
-          journalRef,
-        },
-      });
-
-      journals.push({
-        ref: journalRef,
-        desc: `Payment received for ${invoice.number} via ${body.payment?.method ?? "CASH"}`,
-        date: body.payment?.date ? new Date(body.payment.date) : new Date(),
-        lines: [
-          { accountCode: "1000", type: "DEBIT",  amount: paymentAmount },
-          { accountCode: "1100", type: "CREDIT", amount: paymentAmount },
-        ],
-      });
     }
 
-    return { updatedInvoice, journals };
-  });
+    const paymentAmount = body.payment?.amount ?? Number(invoice.totalAed);
+    const journalRef = `PAY-${invoice.number}-${crypto.randomUUID().slice(0, 8)}`;
+
+    await prisma.payment.create({
+      data: {
+        invoiceId: id,
+        method: body.payment?.method ?? "CASH",
+        amount: paymentAmount,
+        date: body.payment?.date ? new Date(body.payment.date) : new Date(),
+        bankName:      body.payment?.bankName      || null,
+        transactionId: body.payment?.transactionId || null,
+        chequeNumber:  body.payment?.chequeNumber  || null,
+        chequeDate:    body.payment?.chequeDate ? new Date(body.payment.chequeDate) : null,
+        chequeBank:    body.payment?.chequeBank    || null,
+        notes:         body.payment?.notes         || null,
+        journalRef,
+      },
+    });
+
+    journals.push({
+      ref: journalRef,
+      desc: `Payment received for ${invoice.number} via ${body.payment?.method ?? "CASH"}`,
+      date: body.payment?.date ? new Date(body.payment.date) : new Date(),
+      lines: [
+        { accountCode: "1000", type: "DEBIT",  amount: paymentAmount },
+        { accountCode: "1100", type: "CREDIT", amount: paymentAmount },
+      ],
+    });
+  }
 
   for (const j of journals) {
     await postJournal(j.ref, j.desc, j.date, j.lines);
