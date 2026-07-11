@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatAED } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, TrendingUp, FileX, DollarSign, AlertCircle } from "lucide-react";
+import { ArrowLeft, TrendingUp, FileX, DollarSign, AlertCircle, Wallet } from "lucide-react";
 import { CreditNoteButton } from "../CreditNoteButton";
 import { MarkPaidButton } from "../MarkPaidButton";
 
@@ -15,9 +15,13 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function StatCard({ title, value, sub, icon, tone }: {
   title: string; value: string; sub?: string; icon: React.ReactNode;
-  tone: "blue" | "emerald" | "rose" | "amber";
+  tone: "blue" | "emerald" | "rose" | "amber" | "violet";
 }) {
-  const tones = { blue: "bg-sky-50 text-sky-700", emerald: "bg-emerald-50 text-emerald-700", rose: "bg-rose-50 text-rose-700", amber: "bg-amber-50 text-amber-700" };
+  const tones = {
+    blue: "bg-sky-50 text-sky-700", emerald: "bg-emerald-50 text-emerald-700",
+    rose: "bg-rose-50 text-rose-700", amber: "bg-amber-50 text-amber-700",
+    violet: "bg-violet-50 text-violet-700",
+  };
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -33,28 +37,54 @@ function StatCard({ title, value, sub, icon, tone }: {
 }
 
 function DaysBadge({ days }: { days: number }) {
-  if (days <= 0) return <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">Due today</span>;
+  if (days <= 0) return <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">On time</span>;
   if (days <= 30) return <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">{days}d overdue</span>;
   return <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-100">{days}d overdue</span>;
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    ISSUED: "bg-sky-50 text-sky-700 ring-sky-100",
-    PARTIALLY_PAID: "bg-amber-50 text-amber-700 ring-amber-100",
-    DRAFT: "bg-slate-100 text-slate-600 ring-slate-200",
-  };
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${styles[status] ?? "bg-slate-100 text-slate-600 ring-slate-200"}`}>{status.replace("_", " ")}</span>;
+  if (status === "PARTIALLY_PAID") return <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">Partial</span>;
+  if (status === "ISSUED") return <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">Unpaid</span>;
+  if (status === "DRAFT") return <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">Draft</span>;
+  return null;
+}
+
+function PaymentProgress({ paid, total }: { paid: number; total: number }) {
+  const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
+  const balance = Math.max(0, total - paid);
+  return (
+    <div className="min-w-[140px]">
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="font-semibold text-emerald-600">{formatAED(paid)}</span>
+        <span className="text-slate-400">of {formatAED(total)}</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-slate-100">
+        <div
+          className={`h-1.5 rounded-full transition-all ${pct >= 100 ? "bg-emerald-500" : pct > 0 ? "bg-amber-400" : "bg-slate-200"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {balance > 0 && (
+        <p className="mt-1 text-[11px] text-rose-500 font-medium">Balance: {formatAED(balance)}</p>
+      )}
+    </div>
+  );
 }
 
 export default async function ReceivablesPage() {
   const today = new Date();
 
-  const [invoices, creditNotes, customers] = await Promise.all([
+  const [invoices, paidInvoices, creditNotes, customers] = await Promise.all([
     prisma.invoice.findMany({
       where: { status: { in: ["ISSUED", "PARTIALLY_PAID", "DRAFT"] } },
-      include: { customer: true, payments: true },
+      include: { customer: true, payments: { orderBy: { date: "asc" } } },
       orderBy: { issueDate: "asc" },
+    }),
+    prisma.invoice.findMany({
+      where: { status: { in: ["PAID", "PARTIALLY_PAID"] } },
+      include: { customer: true, payments: { orderBy: { date: "asc" } } },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
     }),
     prisma.creditNote.findMany({
       where: { type: "CUSTOMER" },
@@ -64,10 +94,11 @@ export default async function ReceivablesPage() {
     prisma.customer.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  const totalAR = invoices.reduce((s, inv) => s + Number(inv.totalAed), 0);
-  const totalCN = creditNotes.reduce((s, cn) => s + Number(cn.amount) + Number(cn.vatAmount), 0);
-  const netAR = totalAR - totalCN;
-  const overdueCount = invoices.filter((inv) => inv.dueDate && new Date(inv.dueDate) < today).length;
+  const totalAR        = invoices.reduce((s, inv) => s + Number(inv.totalAed), 0);
+  const totalCollected = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+  const totalBalance   = totalAR - totalCollected;
+  const totalCN        = creditNotes.reduce((s, cn) => s + Number(cn.amount) + Number(cn.vatAmount), 0);
+  const partialCount   = invoices.filter((inv) => inv.status === "PARTIALLY_PAID").length;
 
   const invoiceOptions = invoices.map((inv) => ({
     id: inv.id,
@@ -89,31 +120,33 @@ export default async function ReceivablesPage() {
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Accounting</p>
                 <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Accounts Receivable</h1>
-                <p className="mt-1 text-sm text-slate-500">Outstanding invoices — mark paid or issue credit notes</p>
+                <p className="mt-1 text-sm text-slate-500">Outstanding invoices — record payments or issue credit notes</p>
               </div>
             </div>
             <CreditNoteButton type="CUSTOMER" customers={customers} invoices={invoiceOptions} />
           </div>
         </Card>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Outstanding invoices" value={String(invoices.length)} sub="Unpaid / partially paid" icon={<TrendingUp size={20} />} tone="blue" />
-          <StatCard title="Total AR" value={formatAED(totalAR)} sub="Gross receivable" icon={<DollarSign size={20} />} tone="blue" />
-          <StatCard title="Overdue" value={String(overdueCount)} sub="Past due date" icon={<AlertCircle size={20} />} tone="rose" />
-          <StatCard title="Net receivable" value={formatAED(netAR)} sub="After credit notes" icon={<FileX size={20} />} tone="emerald" />
+        {/* KPI Cards */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <StatCard title="Outstanding Invoices" value={String(invoices.length)}      sub={`${partialCount} partially paid`}    icon={<TrendingUp size={20} />}   tone="blue" />
+          <StatCard title="Total AR"             value={formatAED(totalAR)}           sub="Gross receivable"                    icon={<DollarSign size={20} />}   tone="blue" />
+          <StatCard title="Collected So Far"     value={formatAED(totalCollected)}    sub="Across outstanding invoices"         icon={<Wallet size={20} />}       tone="emerald" />
+          <StatCard title="Balance Remaining"    value={formatAED(totalBalance)}      sub="Still owed by customers"             icon={<AlertCircle size={20} />}  tone="rose" />
+          <StatCard title="Credit Notes"         value={formatAED(totalCN)}           sub={`${creditNotes.length} notes`}       icon={<FileX size={20} />}        tone="violet" />
         </section>
 
         {/* Outstanding Invoices */}
         <Card className="overflow-hidden">
           <div className="border-b border-slate-200 px-6 py-4">
             <h2 className="text-base font-semibold text-slate-900">Outstanding Invoices</h2>
-            <p className="mt-1 text-sm text-slate-500">{invoices.length} invoices awaiting payment · Mark paid to move to settled</p>
+            <p className="mt-1 text-sm text-slate-500">{invoices.length} invoices · {partialCount} partially paid · Balance {formatAED(totalBalance)}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  {["Invoice", "Customer", "Issue Date", "Due Date", "Days in Credit", "Total", "Status", "Action"].map((h) => (
+                  {["Invoice", "Customer", "Issue Date", "Overdue", "Status", "Total", "Collected / Balance", "Action"].map((h) => (
                     <th key={h} className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{h}</th>
                   ))}
                 </tr>
@@ -123,34 +156,25 @@ export default async function ReceivablesPage() {
                   <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-slate-400">No outstanding invoices — all clear!</td></tr>
                 )}
                 {invoices.map((inv) => {
-                  const issueDate = new Date(inv.issueDate);
-                  const daysInCredit = Math.floor((today.getTime() - issueDate.getTime()) / 86400000);
-                  const daysOverdue = inv.dueDate
-                    ? Math.max(0, Math.floor((today.getTime() - new Date(inv.dueDate).getTime()) / 86400000))
-                    : null;
+                  const days    = Math.floor((today.getTime() - new Date(inv.issueDate).getTime()) / 86400000);
+                  const paid    = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+                  const total   = Number(inv.totalAed);
                   return (
                     <tr key={inv.id} className="border-b border-slate-100 transition hover:bg-slate-50/80">
                       <td className="px-5 py-4">
                         <Link href={`/sales/${inv.id}/invoice`} className="font-mono text-sm font-semibold text-sky-700 hover:underline">{inv.number}</Link>
                       </td>
                       <td className="px-5 py-4 text-sm font-medium text-slate-800">{inv.customer.name}</td>
-                      <td className="px-5 py-4 text-sm text-slate-500">{issueDate.toLocaleDateString("en-AE")}</td>
-                      <td className="px-5 py-4 text-sm text-slate-500">
-                        {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-AE") : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium text-slate-700">{daysInCredit}d outstanding</span>
-                          {daysOverdue !== null && daysOverdue > 0 && <DaysBadge days={daysOverdue} />}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(Number(inv.totalAed))}</td>
+                      <td className="px-5 py-4 text-sm text-slate-500">{new Date(inv.issueDate).toLocaleDateString("en-AE")}</td>
+                      <td className="px-5 py-4"><DaysBadge days={days} /></td>
                       <td className="px-5 py-4"><StatusBadge status={inv.status} /></td>
+                      <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(total)}</td>
+                      <td className="px-5 py-4"><PaymentProgress paid={paid} total={total} /></td>
                       <td className="px-5 py-4">
                         <MarkPaidButton
                           invoiceId={inv.id}
-                          invoiceTotal={Number(inv.totalAed)}
-                          paidSoFar={inv.payments.reduce((s, p) => s + Number(p.amount), 0)}
+                          invoiceTotal={total}
+                          paidSoFar={paid}
                           label="Record Payment"
                         />
                       </td>
@@ -162,7 +186,56 @@ export default async function ReceivablesPage() {
           </div>
         </Card>
 
-        {/* Credit Notes */}
+        {/* Paid Invoices */}
+        <Card className="overflow-hidden">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="text-base font-semibold text-slate-900">Paid Invoices</h2>
+            <p className="mt-1 text-sm text-slate-500">{paidInvoices.length} invoices · Last 20</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  {["Invoice", "Customer", "Issue Date", "Amount Collected", "Payment Method", "Status", "Paid On"].map((h) => (
+                    <th key={h} className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paidInvoices.length === 0 && (
+                  <tr><td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">No paid invoices yet</td></tr>
+                )}
+                {paidInvoices.map((inv) => {
+                  const amtPaid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+                  const lastPay = inv.payments[inv.payments.length - 1];
+                  return (
+                    <tr key={inv.id} className="border-b border-slate-100 transition hover:bg-slate-50/80">
+                      <td className="px-5 py-4 font-mono text-sm font-semibold text-slate-700">{inv.number}</td>
+                      <td className="px-5 py-4 text-sm font-medium text-slate-800">{inv.customer.name}</td>
+                      <td className="px-5 py-4 text-sm text-slate-500">{new Date(inv.issueDate).toLocaleDateString("en-AE")}</td>
+                      <td className="px-5 py-4 text-sm font-semibold text-emerald-600 [font-variant-numeric:tabular-nums]">{formatAED(amtPaid)}</td>
+                      <td className="px-5 py-4">
+                        {lastPay
+                          ? <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">{lastPay.method.replace("_", " ")}</span>
+                          : <span className="text-slate-300 text-sm">—</span>}
+                      </td>
+                      <td className="px-5 py-4">
+                        {inv.status === "PAID"
+                          ? <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">Fully Paid</span>
+                          : <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-100">Partially Paid</span>}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-500">
+                        {lastPay ? new Date(lastPay.date).toLocaleDateString("en-AE") : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Customer Credit Notes */}
         <Card className="overflow-hidden">
           <div className="border-b border-slate-200 px-6 py-4">
             <h2 className="text-base font-semibold text-slate-900">Customer Credit Notes</h2>
