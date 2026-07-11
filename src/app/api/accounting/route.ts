@@ -38,10 +38,11 @@ async function getPL(from: Date, to: Date) {
   // ── Purchase costs (total supplier spend in period, excl. VAT) ────────────
   const purchaseAgg = await prisma.purchaseOrder.aggregate({
     where: { status: "RECEIVED", orderDate: { gte: from, lte: to } },
-    _sum: { subtotalAed: true, customsDuty: true, shippingCost: true },
+    _sum: { subtotalAed: true, inputVat: true, customsDuty: true, shippingCost: true },
   });
   const totalPurchaseCost =
     Number(purchaseAgg._sum.subtotalAed ?? 0) +
+    Number(purchaseAgg._sum.inputVat    ?? 0) +
     Number(purchaseAgg._sum.customsDuty ?? 0) +
     Number(purchaseAgg._sum.shippingCost ?? 0);
 

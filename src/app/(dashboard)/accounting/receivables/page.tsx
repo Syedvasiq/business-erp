@@ -86,6 +86,7 @@ export default async function ReceivablesPage() {
       orderBy: { updatedAt: "desc" },
       take: 20,
     }),
+
     prisma.creditNote.findMany({
       where: { type: "CUSTOMER" },
       include: { customer: true, invoice: true },
@@ -95,8 +96,10 @@ export default async function ReceivablesPage() {
   ]);
 
   const totalAR        = invoices.reduce((s, inv) => s + Number(inv.totalAed), 0);
-  const totalCollected = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
-  const totalBalance   = totalAR - totalCollected;
+  const collectedFromOutstanding = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+  const collectedFromPaid        = paidInvoices.filter((inv) => inv.status === "PAID").reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+  const totalCollected           = collectedFromOutstanding + collectedFromPaid;
+  const totalBalance             = totalAR - collectedFromOutstanding;
   const totalCN        = creditNotes.reduce((s, cn) => s + Number(cn.amount) + Number(cn.vatAmount), 0);
   const partialCount   = invoices.filter((inv) => inv.status === "PARTIALLY_PAID").length;
 
@@ -131,8 +134,8 @@ export default async function ReceivablesPage() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard title="Outstanding Invoices" value={String(invoices.length)}      sub={`${partialCount} partially paid`}    icon={<TrendingUp size={20} />}   tone="blue" />
           <StatCard title="Total AR"             value={formatAED(totalAR)}           sub="Gross receivable"                    icon={<DollarSign size={20} />}   tone="blue" />
-          <StatCard title="Collected So Far"     value={formatAED(totalCollected)}    sub="Across outstanding invoices"         icon={<Wallet size={20} />}       tone="emerald" />
-          <StatCard title="Balance Remaining"    value={formatAED(totalBalance)}      sub="Still owed by customers"             icon={<AlertCircle size={20} />}  tone="rose" />
+          <StatCard title="Collected So Far"     value={formatAED(totalCollected)}    sub="Outstanding + fully paid invoices"   icon={<Wallet size={20} />}       tone="emerald" />
+          <StatCard title="Balance Remaining"    value={formatAED(totalBalance)}      sub="Still owed on open invoices"         icon={<AlertCircle size={20} />}  tone="rose" />
           <StatCard title="Credit Notes"         value={formatAED(totalCN)}           sub={`${creditNotes.length} notes`}       icon={<FileX size={20} />}        tone="violet" />
         </section>
 
