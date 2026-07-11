@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
-import { Plus, CheckCircle2, Loader2, Pencil } from "lucide-react";
+import { Plus, CheckCircle2, Loader2 } from "lucide-react";
 import { formatAED } from "@/lib/utils";
 
 type AgentForm = { name: string; email: string; isInternal: string; trn: string; rate: string; basis: string };
@@ -14,7 +14,6 @@ type CommForm  = { agentId: string; invoiceId: string };
 
 interface Props {
   agents: any[];
-  // when used as inline row action:
   markPaidId?:     string;
   markPaidAmount?: number;
 }
@@ -26,10 +25,8 @@ export function CommissionActions({ agents, markPaidId, markPaidAmount }: Props)
   const [invoices,  setInvoices]  = useState<any[]>([]);
   const router = useRouter();
 
-  const agentForm = useForm<AgentForm>({
-    defaultValues: { isInternal: "true", basis: "GROSS_SALE", rate: "5" },
-  });
-  const commForm = useForm<CommForm>();
+  const agentForm = useForm<AgentForm>({ defaultValues: { isInternal: "true", basis: "GROSS_SALE", rate: "5" } });
+  const commForm  = useForm<CommForm>();
 
   useEffect(() => {
     if (commOpen) fetch("/api/sales?status=ISSUED").then((r) => r.json()).then(setInvoices);
@@ -71,77 +68,106 @@ export function CommissionActions({ agents, markPaidId, markPaidAmount }: Props)
       <button
         onClick={markPaid}
         disabled={paying}
-        title={`Pay out ${markPaidAmount !== undefined ? formatAED(markPaidAmount) : ""}`}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100 hover:border-emerald-300 hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:pointer-events-none"
+        title={markPaidAmount !== undefined ? `Pay out ${formatAED(markPaidAmount)}` : undefined}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100 hover:border-emerald-300 hover:-translate-y-px hover:shadow-sm disabled:pointer-events-none disabled:opacity-50"
       >
-        {paying
-          ? <Loader2 size={12} className="animate-spin" />
-          : <CheckCircle2 size={12} />
-        }
+        {paying ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
         {paying ? "Processing…" : "Mark Paid"}
       </button>
     );
   }
 
-  // ── Top-level toolbar buttons ──────────────────────────────────────────────
+  // ── Top-level toolbar ──────────────────────────────────────────────────────
   return (
-    <div className="flex gap-2">
-      <Button variant="secondary" onClick={() => setAgentOpen(true)}>
+    <div className="flex flex-wrap gap-2">
+      <Button variant="secondary" onClick={() => setAgentOpen(true)}
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-4">
         <Plus size={16} /> Add Agent
       </Button>
-      <Button onClick={() => setCommOpen(true)}>
+      <Button onClick={() => setCommOpen(true)}
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800">
         <Plus size={16} /> Assign Commission
       </Button>
 
-      {/* Add Agent modal */}
-      <Modal open={agentOpen} onClose={() => setAgentOpen(false)} title="Add Agent / Broker">
-        <form onSubmit={agentForm.handleSubmit(onAgentSubmit)} className="space-y-4">
-          <Input label="Name *"              {...agentForm.register("name",  { required: true })} />
-          <Input label="Email"               {...agentForm.register("email")} />
-          <Input label="TRN (if external)"   {...agentForm.register("trn")} />
-          <div className="grid grid-cols-2 gap-3">
-            <Select label="Type" options={[
-              { value: "true",  label: "Internal Staff" },
-              { value: "false", label: "External Broker" },
-            ]} {...agentForm.register("isInternal")} />
-            <Select label="Commission Basis" options={[
-              { value: "GROSS_SALE",    label: "Gross Sale" },
-              { value: "NET_ITEMS",     label: "Net Items" },
-              { value: "AFTER_PAYMENT", label: "After Full Payment" },
-            ]} {...agentForm.register("basis")} />
+      {/* ── Add Agent modal ── */}
+      <Modal open={agentOpen} onClose={() => setAgentOpen(false)} title="" className="max-w-lg">
+        <div className="w-full">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Add Agent / Broker</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Add an internal staff member or external broker to the directory.</p>
           </div>
-          <Input label="Rate (%)" type="text" inputMode="decimal" {...agentForm.register("rate")} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setAgentOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={agentForm.formState.isSubmitting}>Save Agent</Button>
-          </div>
-        </form>
+
+          <form onSubmit={agentForm.handleSubmit(onAgentSubmit)}>
+            <div className="space-y-4 px-5 py-5 sm:px-6">
+              <Input label="Name *" {...agentForm.register("name", { required: true })} />
+              <Input label="Email"  {...agentForm.register("email")} />
+              <Input label="TRN (if external)" {...agentForm.register("trn")} />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Select label="Type" options={[
+                  { value: "true",  label: "Internal Staff" },
+                  { value: "false", label: "External Broker" },
+                ]} {...agentForm.register("isInternal")} />
+                <Select label="Commission Basis" options={[
+                  { value: "GROSS_SALE",    label: "Gross Sale" },
+                  { value: "NET_ITEMS",     label: "Net Items" },
+                  { value: "AFTER_PAYMENT", label: "After Full Payment" },
+                ]} {...agentForm.register("basis")} />
+              </div>
+              <Input label="Rate (%)" type="text" inputMode="decimal" {...agentForm.register("rate")} />
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+              <Button type="button" variant="secondary" onClick={() => setAgentOpen(false)}
+                className="min-h-[44px] rounded-2xl">Cancel</Button>
+              <Button type="submit" disabled={agentForm.formState.isSubmitting}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                {agentForm.formState.isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                {agentForm.formState.isSubmitting ? "Saving…" : "Save Agent"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </Modal>
 
-      {/* Assign Commission modal */}
-      <Modal open={commOpen} onClose={() => setCommOpen(false)} title="Assign Commission">
-        <form onSubmit={commForm.handleSubmit(onCommSubmit)} className="space-y-4">
-          <Select
-            label="Agent *"
-            options={[
-              { value: "", label: "Select agent…" },
-              ...agents.map((a) => ({ value: a.id, label: `${a.name} (${a.rate}%)` })),
-            ]}
-            {...commForm.register("agentId", { required: true })}
-          />
-          <Select
-            label="Invoice *"
-            options={[
-              { value: "", label: "Select invoice…" },
-              ...invoices.map((i) => ({ value: i.id, label: `${i.number} — ${i.customer?.name}` })),
-            ]}
-            {...commForm.register("invoiceId", { required: true })}
-          />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setCommOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={commForm.formState.isSubmitting}>Assign</Button>
+      {/* ── Assign Commission modal ── */}
+      <Modal open={commOpen} onClose={() => setCommOpen(false)} title="" className="max-w-lg">
+        <div className="w-full">
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Assign Commission</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Link an agent to an issued invoice to calculate their payout.</p>
           </div>
-        </form>
+
+          <form onSubmit={commForm.handleSubmit(onCommSubmit)}>
+            <div className="space-y-4 px-5 py-5 sm:px-6">
+              <Select
+                label="Agent *"
+                options={[
+                  { value: "", label: "Select agent…" },
+                  ...agents.map((a) => ({ value: a.id, label: `${a.name} (${a.rate}%)` })),
+                ]}
+                {...commForm.register("agentId", { required: true })}
+              />
+              <Select
+                label="Invoice *"
+                options={[
+                  { value: "", label: "Select invoice…" },
+                  ...invoices.map((i) => ({ value: i.id, label: `${i.number} — ${i.customer?.name}` })),
+                ]}
+                {...commForm.register("invoiceId", { required: true })}
+              />
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+              <Button type="button" variant="secondary" onClick={() => setCommOpen(false)}
+                className="min-h-[44px] rounded-2xl">Cancel</Button>
+              <Button type="submit" disabled={commForm.formState.isSubmitting}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                {commForm.formState.isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                {commForm.formState.isSubmitting ? "Assigning…" : "Assign"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </Modal>
     </div>
   );
