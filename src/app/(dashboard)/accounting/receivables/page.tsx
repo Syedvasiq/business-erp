@@ -86,7 +86,6 @@ export default async function ReceivablesPage() {
       orderBy: { updatedAt: "desc" },
       take: 20,
     }),
-
     prisma.creditNote.findMany({
       where: { type: "CUSTOMER" },
       include: { customer: true, invoice: true },
@@ -95,11 +94,11 @@ export default async function ReceivablesPage() {
     prisma.customer.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  const totalAR        = invoices.reduce((s, inv) => s + Number(inv.totalAed), 0);
+  const totalAR                  = invoices.reduce((s, inv) => s + Number(inv.totalAed), 0);
   const collectedFromOutstanding = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const collectedFromPaid        = paidInvoices.filter((inv) => inv.status === "PAID").reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const totalCollected           = collectedFromOutstanding + collectedFromPaid;
-  const totalBalance             = totalAR - collectedFromOutstanding;
+  const totalBalance             = totalAR - totalCollected;
   const totalCN        = creditNotes.reduce((s, cn) => s + Number(cn.amount) + Number(cn.vatAmount), 0);
   const partialCount   = invoices.filter((inv) => inv.status === "PARTIALLY_PAID").length;
 
