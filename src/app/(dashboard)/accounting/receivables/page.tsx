@@ -98,7 +98,7 @@ export default async function ReceivablesPage() {
   const collectedFromOutstanding = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const collectedFromPaid        = paidInvoices.filter((inv) => inv.status === "PAID").reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const totalCollected           = collectedFromOutstanding + collectedFromPaid;
-  const totalBalance             = totalAR - totalCollected;
+  const totalBalance             = totalAR - collectedFromOutstanding;
   const totalCN        = creditNotes.reduce((s, cn) => s + Number(cn.amount) + Number(cn.vatAmount), 0);
   const partialCount   = invoices.filter((inv) => inv.status === "PARTIALLY_PAID").length;
 
