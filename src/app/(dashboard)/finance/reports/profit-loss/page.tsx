@@ -66,12 +66,13 @@ export default function ProfitLossPage() {
 
         {data && (
           <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               {[
-                { label: "Revenue",      value: data.revenue,     cls: "bg-sky-50 text-sky-700" },
-                { label: "Gross Profit", value: data.grossProfit, cls: "bg-emerald-50 text-emerald-700" },
-                { label: "Total Costs",  value: data.operatingExpenses + data.cogs, cls: "bg-amber-50 text-amber-700" },
-                { label: "Net Profit",   value: data.netProfit,   cls: data.netProfit >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700" },
+                { label: "Income",            value: data.revenue,            cls: "bg-sky-50 text-sky-700" },
+                { label: "Cost of Goods Sold", value: data.cogs,               cls: "bg-orange-50 text-orange-700" },
+                { label: "Gross Profit",       value: data.grossProfit,        cls: "bg-emerald-50 text-emerald-700" },
+                { label: "Total Expenses",     value: data.operatingExpenses,  cls: "bg-rose-50 text-rose-700" },
+                { label: "Net Profit",         value: data.netProfit,          cls: data.netProfit >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700" },
               ].map(({ label, value, cls }) => (
                 <Card key={label} className={`p-4 ${cls}`}>
                   <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">{label}</p>
