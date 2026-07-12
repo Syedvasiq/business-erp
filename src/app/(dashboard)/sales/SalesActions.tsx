@@ -835,17 +835,30 @@ export function SalesStatusButton({
   const [dropOpen, setDropOpen] = useState(false);
   const [payOpen, setPayOpen]   = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [balanceDue, setBalanceDue] = useState<number | null>(null);
   const router = useRouter();
 
-  const { register, handleSubmit, watch, reset, formState: { isSubmitting } } = useForm<PaymentForm>({
+  const { register, handleSubmit, watch, reset, setValue, formState: { isSubmitting } } = useForm<PaymentForm>({
     defaultValues: {
       status: "PAID", method: "CASH",
-      amount: invoiceTotal ? String(invoiceTotal) : "",
+      amount: "",
       date: new Date().toISOString().slice(0, 10),
       bankName: "", transactionId: "", chequeNumber: "",
       chequeDate: "", chequeBank: "", notes: "",
     },
   });
+
+  useEffect(() => {
+    if (!payOpen) return;
+    fetch(`/api/sales/${invoiceId}`)
+      .then((r) => r.json())
+      .then((inv) => {
+        const paid = (inv.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+        const due  = Math.max(0, Number(inv.totalAed) - paid);
+        setBalanceDue(due);
+        setValue("amount", due.toFixed(2));
+      });
+  }, [payOpen]);
 
   const method   = watch("method");
   const statusVal = watch("status");
@@ -894,6 +907,7 @@ export function SalesStatusButton({
       }),
     });
     reset();
+    setBalanceDue(null);
     setPayOpen(false);
     router.refresh();
   };
@@ -940,6 +954,11 @@ export function SalesStatusButton({
           <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold tracking-tight text-slate-900">Record Payment</h2>
             <p className="mt-1 text-sm text-slate-500">Enter payment details — saved to ledger and payment history.</p>
+            {balanceDue !== null && (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+                Balance Due: {formatAED(balanceDue)}
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit(onPaySubmit)} className="space-y-4 px-5 py-5 sm:px-6">

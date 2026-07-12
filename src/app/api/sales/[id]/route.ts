@@ -11,6 +11,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       customer: true,
       lines: { include: { item: true } },
       commissions: { include: { agent: true } },
+      payments: true,
     },
   });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
