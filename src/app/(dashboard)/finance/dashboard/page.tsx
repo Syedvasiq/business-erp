@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowDownCircle, ArrowUpCircle, Users, Truck, Building2,
   TrendingUp, AlertCircle, RefreshCw, ArrowLeftRight, GitMerge, Receipt,
-  FileSpreadsheet, PieChart as PieIcon, DollarSign, Calendar, X,
+  FileSpreadsheet, PieChart as PieIcon, DollarSign, Calendar, X, Package, UserCheck,
 } from "lucide-react";
 import { FinanceCharts } from "./FinanceCharts";
 
@@ -243,14 +243,22 @@ export default function FinanceDashboard() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Directory</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-sky-50 px-4 py-3 text-center">
+                  <Link href="/customers" className="rounded-xl bg-sky-50 px-4 py-3 text-center hover:bg-sky-100 transition">
                     <p className="text-2xl font-bold text-sky-700">{data.customers}</p>
                     <p className="text-xs font-medium text-sky-600 mt-0.5">Customers</p>
-                  </div>
-                  <div className="rounded-xl bg-amber-50 px-4 py-3 text-center">
+                  </Link>
+                  <Link href="/suppliers" className="rounded-xl bg-amber-50 px-4 py-3 text-center hover:bg-amber-100 transition">
                     <p className="text-2xl font-bold text-amber-700">{data.suppliers}</p>
                     <p className="text-xs font-medium text-amber-600 mt-0.5">Suppliers</p>
-                  </div>
+                  </Link>
+                  <Link href="/inventory" className="rounded-xl bg-emerald-50 px-4 py-3 text-center hover:bg-emerald-100 transition">
+                    <p className="text-2xl font-bold text-emerald-700">{data.inventory}</p>
+                    <p className="text-xs font-medium text-emerald-600 mt-0.5">Inventory</p>
+                  </Link>
+                  <Link href="/commissions" className="rounded-xl bg-violet-50 px-4 py-3 text-center hover:bg-violet-100 transition">
+                    <p className="text-2xl font-bold text-violet-700">{data.partners}</p>
+                    <p className="text-xs font-medium text-violet-600 mt-0.5">Partners</p>
+                  </Link>
                 </div>
               </Card>
             </div>

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const [
     outstandingInvoices, outstandingPOs, periodPayments,
-    bankAccounts, customers, suppliers,
+    bankAccounts, customers, suppliers, inventory, partners,
     periodExpenses, allPayments, periodInvoices,
   ] = await Promise.all([
     prisma.invoice.findMany({ where: { status: { in: ["ISSUED","PARTIALLY_PAID"] } }, include: { payments: true } }),
@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
     prisma.bankAccount.findMany({ where: { isActive: true }, include: { transactions: true } }),
     prisma.customer.count(),
     prisma.supplier.count(),
+    prisma.item.count(),
+    prisma.partner.count(),
     prisma.expense.findMany({ where: { date: { gte: from, lte: to } }, orderBy: { date: "asc" } }),
     prisma.payment.findMany({ where: { date: { gte: from, lte: to } }, select: { method: true, amount: true } }),
     prisma.invoice.findMany({ where: { status: { not: "CANCELLED" }, issueDate: { gte: from, lte: to } } }),
@@ -129,7 +131,7 @@ export async function GET(req: NextRequest) {
     outstandingInvoicesCount: outstandingInvoices.length,
     outstandingPOsCount: outstandingPOs.length,
     bankAccountsCount: bankAccounts.length,
-    customers, suppliers,
+    customers, suppliers, inventory, partners,
     monthlyData, expenseByCategory, agingData, paymentByMethod,
     isSingleMonth,
   });
