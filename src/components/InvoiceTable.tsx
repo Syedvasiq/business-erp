@@ -10,6 +10,7 @@ type Invoice = {
   number: string;
   status: string;
   totalAed: number;
+  paidAmount: number;
   issueDate: Date | string;
   emirate: string | null;
   customer: { name: string };
@@ -73,7 +74,7 @@ export function InvoiceTable({ invoices }: { invoices: Invoice[] }) {
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {["Invoice", "Customer", "Date", "Emirate", "Status", "Total", "Action"].map((h) => (
+              {["Invoice", "Customer", "Date", "Status", "Total", "Balance Due", "Action"].map((h) => (
                 <th key={h} className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{h}</th>
               ))}
             </tr>
@@ -91,9 +92,19 @@ export function InvoiceTable({ invoices }: { invoices: Invoice[] }) {
                 </td>
                 <td className="px-5 py-4 text-sm font-medium text-slate-800">{inv.customer.name}</td>
                 <td className="px-5 py-4 text-sm text-slate-500">{new Date(inv.issueDate).toLocaleDateString("en-AE")}</td>
-                <td className="px-5 py-4 text-sm text-slate-500">{inv.emirate ?? "—"}</td>
                 <td className="px-5 py-4"><StatusBadge status={inv.status} /></td>
                 <td className="px-5 py-4 text-sm font-semibold text-slate-900 [font-variant-numeric:tabular-nums]">{formatAED(inv.totalAed)}</td>
+                <td className="px-5 py-4 text-sm font-semibold tabular-nums">
+                  {inv.status === "PAID" ? (
+                    <span className="text-emerald-600">—</span>
+                  ) : inv.status === "CANCELLED" ? (
+                    <span className="text-slate-400">—</span>
+                  ) : (
+                    <span className={inv.paidAmount > 0 ? "text-amber-600" : "text-rose-600"}>
+                      {formatAED(Math.max(0, inv.totalAed - inv.paidAmount))}
+                    </span>
+                  )}
+                </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
                     {inv.status !== "CANCELLED" && <EditInvoiceButton invoiceId={inv.id} />}

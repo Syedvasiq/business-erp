@@ -92,7 +92,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default async function SalesPage() {
   const invoices = await prisma.invoice.findMany({
-    include: { customer: true },
+    include: { customer: true, payments: true },
     orderBy: { id: "desc" },
   });
 
@@ -102,6 +102,7 @@ export default async function SalesPage() {
     subtotalAed: Number(inv.subtotalAed),
     vatAmount: Number(inv.vatAmount),
     totalAed: Number(inv.totalAed),
+    paidAmount: inv.payments.reduce((s, p) => s + Number(p.amount), 0),
   }));
 
   const totalInvoices = mappedInvoices.length;
