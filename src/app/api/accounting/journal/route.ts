@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  // ?accounts=1 returns chart of accounts for the journal voucher form
+  if (searchParams.get("accounts") === "1") {
+    const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });
+    return NextResponse.json(accounts);
+  }
+  const journals = await prisma.journal.findMany({
+    orderBy: { date: "desc" },
+    take: 50,
+    include: { lines: { include: { account: { select: { code: true, name: true } } } } },
+  });
+  return NextResponse.json(journals);
+}
+
 export async function POST(req: NextRequest) {
   const { reference, description, date, lines } = await req.json();
 
