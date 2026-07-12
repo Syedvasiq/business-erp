@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { formatAED } from "@/lib/utils";
-import { ArrowLeft, Plus, X, Pencil, Trash2, TrendingUp, Wallet, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, X, Pencil, Trash2, TrendingUp, Wallet, AlertCircle, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -27,7 +27,24 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 const inputCls = "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500";
 const btnPrimary = "w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50";
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function buildMonthRange(year: number, month: number) {
+  const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { from, to };
+}
+
 export default function ProfitSharingPage() {
+  const today = new Date();
+  const [mode, setMode] = useState<"month" | "custom">("month");
+  const [year, setYear]   = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth()); // 0-based
+  const [customFrom, setCustomFrom] = useState(`${today.getFullYear()}-01-01`);
+  const [customTo, setCustomTo]     = useState(`${today.getFullYear()}-12-31`);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
   const [partners, setPartners] = useState<any[]>([]);
   const [netProfit, setNetProfit] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,19 +55,31 @@ export default function ProfitSharingPage() {
   const [wd, setWd] = useState({ amount: "", note: "", date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
+  const { from, to } = mode === "month" ? buildMonthRange(year, month) : { from: customFrom, to: customTo };
+  const periodLabel = mode === "month" ? `${MONTHS[month]} ${year}` : `${customFrom} → ${customTo}`;
+
+  const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       fetch("/api/finance/partners").then((r) => r.json()),
-      fetch("/api/finance/reports?report=pl").then((r) => r.json()),
+      fetch(`/api/finance/reports?report=pl&from=${from}&to=${to}`).then((r) => r.json()),
     ]).then(([p, pl]) => {
       setPartners(p);
       setNetProfit(pl.netProfit ?? 0);
       setLoading(false);
     });
-  };
+  }, [from, to]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const prevMonth = () => {
+    if (month === 0) { setMonth(11); setYear((y) => y - 1); }
+    else setMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (month === 11) { setMonth(0); setYear((y) => y + 1); }
+    else setMonth((m) => m + 1);
+  };
 
   const totalSharePct = partners.reduce((s, p) => s + Number(p.sharePercent), 0);
 
@@ -100,7 +129,7 @@ export default function ProfitSharingPage() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
 
         <Card className="p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-center gap-4">
               <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
                 <ArrowLeft size={16} />
@@ -111,11 +140,56 @@ export default function ProfitSharingPage() {
                 <p className="mt-0.5 text-sm text-slate-500">{partners.length} partners · {totalSharePct}% allocated · Net Profit {formatAED(netProfit)}</p>
               </div>
             </div>
-            <button
-              onClick={() => { setForm({ name: "", email: "", sharePercent: "" }); setEditTarget(null); setShowAdd(true); }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-              <Plus size={15} /> Add Partner
-            </button>
+
+            <div className="flex flex-col items-end gap-3">
+              {/* Mode toggle */}
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  {(["month", "custom"] as const).map((m) => (
+                    <button key={m} onClick={() => { setMode(m); if (m === "custom") setShowCustomInput(true); }}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        mode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                      }`}>
+                      {m === "month" ? "Monthly" : "Custom"}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { setForm({ name: "", email: "", sharePercent: "" }); setEditTarget(null); setShowAdd(true); }}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                  <Plus size={15} /> Add Partner
+                </button>
+              </div>
+
+              {/* Month navigator */}
+              {mode === "month" && (
+                <div className="flex items-center gap-2">
+                  <button onClick={prevMonth} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="min-w-[100px] text-center text-sm font-semibold text-slate-800">{MONTHS[month]} {year}</span>
+                  <button onClick={nextMonth} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Custom date inputs */}
+              {mode === "custom" && showCustomInput && (
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+                  <Calendar size={13} className="text-slate-400" />
+                  <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-sky-400" />
+                  <span className="text-xs text-slate-400">→</span>
+                  <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-sky-400" />
+                  <button onClick={() => setShowCustomInput(false)}
+                    className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800">Apply</button>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400">Period: <span className="font-semibold text-slate-600">{periodLabel}</span></p>
+            </div>
           </div>
         </Card>
 
