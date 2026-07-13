@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatAED, CT_FREE_THRESHOLD, CT_RATE, SBR_THRESHOLD } from "@/lib/utils";
 import { BadgePercent, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { ExportButton } from "@/components/ExportButton";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] ${className}`}>{children}</div>;
@@ -39,13 +40,29 @@ export default function CorporateTaxPage() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
 
         <Card className="p-5 sm:p-6">
-          <div className="flex items-center gap-4">
-            <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Reports</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Corporate Tax Planner</h1>
-              <p className="mt-0.5 text-sm text-slate-500">UAE CT — 0% up to AED 375,000 · 9% above · AED 3M Small Business Relief</p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Reports</p>
+                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Corporate Tax Planner</h1>
+                <p className="mt-0.5 text-sm text-slate-500">UAE CT — 0% up to AED 375,000 · 9% above · AED 3M Small Business Relief</p>
+              </div>
             </div>
+            <ExportButton
+              filename={`corporate-tax-${from}-${to}`}
+              pdfTitle="Corporate Tax Planner"
+              pdfSubtitle={`${from} to ${to}`}
+              disabled={!data}
+              csvRows={data ? [
+                { Item: "Net Profit",            Amount: data.netProfit },
+                { Item: "Free Threshold",         Amount: -CT_FREE_THRESHOLD },
+                { Item: "Taxable Income",          Amount: data.taxableIncome },
+                { Item: "CT Rate",                Amount: `${CT_RATE * 100}%` },
+                { Item: "Corporate Tax Payable",  Amount: data.ctPayable },
+                { Item: "Small Business Relief",  Amount: data.eligibleForSBR ? "Yes" : "No" },
+              ] : undefined}
+            />
           </div>
         </Card>
 

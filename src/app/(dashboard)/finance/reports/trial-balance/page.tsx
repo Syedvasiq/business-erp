@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatAED } from "@/lib/utils";
 import { Activity, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { ExportButton } from "@/components/ExportButton";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] ${className}`}>{children}</div>;
@@ -30,7 +31,7 @@ export default function TrialBalancePage() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
 
         <Card className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
               <div>
@@ -39,11 +40,22 @@ export default function TrialBalancePage() {
                 <p className="mt-0.5 text-sm text-slate-500">All accounts with total debits and credits</p>
               </div>
             </div>
-            <button onClick={generate} disabled={loading}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
-              {loading && <Loader2 size={14} className="animate-spin" />}
-              {loading ? "Loading…" : "Generate Trial Balance"}
-            </button>
+            <div className="flex items-center gap-2">
+              <ExportButton
+                filename="trial-balance"
+                pdfTitle="Trial Balance"
+                disabled={!data}
+                csvRows={data?.rows.map((r: any) => ({
+                  Code: r.code, Account: r.name, Type: r.type,
+                  "Total Debits": r.totalDr, "Total Credits": r.totalCr, Balance: r.balance,
+                }))}
+              />
+              <button onClick={generate} disabled={loading}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
+                {loading && <Loader2 size={14} className="animate-spin" />}
+                {loading ? "Loading…" : "Generate Trial Balance"}
+              </button>
+            </div>
           </div>
         </Card>
 

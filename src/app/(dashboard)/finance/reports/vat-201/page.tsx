@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatAED } from "@/lib/utils";
 import { Receipt, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { ExportButton } from "@/components/ExportButton";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] ${className}`}>{children}</div>;
@@ -28,13 +29,29 @@ export default function VAT201Page() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
 
         <Card className="p-5 sm:p-6">
-          <div className="flex items-center gap-4">
-            <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Reports</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">VAT Return — Form 201</h1>
-              <p className="mt-0.5 text-sm text-slate-500">UAE FTA VAT return by emirate</p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Reports</p>
+                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">VAT Return — Form 201</h1>
+                <p className="mt-0.5 text-sm text-slate-500">UAE FTA VAT return by emirate</p>
+              </div>
             </div>
+            <ExportButton
+              filename={`vat201-${from}-${to}`}
+              pdfTitle="VAT Return Form 201"
+              pdfSubtitle={`${from} to ${to}`}
+              disabled={!data}
+              csvRows={data ? [
+                ...Object.entries(data.outputByEmirate).map(([emirate, d]: [string, any]) => ({
+                  Emirate: emirate, "Taxable Amount (AED)": d.taxable, "VAT Collected (AED)": d.vat,
+                })),
+                { Emirate: "TOTAL OUTPUT VAT", "Taxable Amount (AED)": "", "VAT Collected (AED)": data.totalOutputVat },
+                { Emirate: "Input VAT Recoverable", "Taxable Amount (AED)": "", "VAT Collected (AED)": -data.totalInputVat },
+                { Emirate: "NET VAT PAYABLE", "Taxable Amount (AED)": "", "VAT Collected (AED)": data.netVatPayable },
+              ] : undefined}
+            />
           </div>
         </Card>
 

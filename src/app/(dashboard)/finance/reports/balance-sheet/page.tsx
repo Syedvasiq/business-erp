@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatAED } from "@/lib/utils";
 import { Scale, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { ExportButton } from "@/components/ExportButton";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] ${className}`}>{children}</div>;
@@ -52,7 +53,7 @@ export default function BalanceSheetPage() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
 
         <Card className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
               <div>
@@ -61,11 +62,24 @@ export default function BalanceSheetPage() {
                 <p className="mt-0.5 text-sm text-slate-500">Assets = Liabilities + Equity</p>
               </div>
             </div>
-            <button onClick={generate} disabled={loading}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
-              {loading && <Loader2 size={14} className="animate-spin" />}
-              {loading ? "Loading…" : "Generate Balance Sheet"}
-            </button>
+            <div className="flex items-center gap-2">
+              <ExportButton
+                filename="balance-sheet"
+                pdfTitle="Balance Sheet"
+                disabled={!data}
+                csvRows={data ? [
+                  ...data.assets.map((r: any) => ({ Section: "Asset", Code: r.code, Account: r.name, Balance: r.balance })),
+                  ...data.liabilities.map((r: any) => ({ Section: "Liability", Code: r.code, Account: r.name, Balance: r.balance })),
+                  ...data.equity.map((r: any) => ({ Section: "Equity", Code: r.code, Account: r.name, Balance: r.balance })),
+                  { Section: "Equity", Code: "RE", Account: "Retained Earnings", Balance: data.retainedEarnings },
+                ] : undefined}
+              />
+              <button onClick={generate} disabled={loading}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
+                {loading && <Loader2 size={14} className="animate-spin" />}
+                {loading ? "Loading…" : "Generate Balance Sheet"}
+              </button>
+            </div>
           </div>
         </Card>
 

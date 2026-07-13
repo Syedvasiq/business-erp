@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatAED } from "@/lib/utils";
 import { TrendingUp, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { ExportButton } from "@/components/ExportButton";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] ${className}`}>{children}</div>;
@@ -39,12 +40,29 @@ export default function ProfitLossPage() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
 
         <Card className="p-5 sm:p-6">
-          <div className="flex items-center gap-4">
-            <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Reports</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Profit & Loss</h1>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">←</Link>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Reports</p>
+                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Profit & Loss</h1>
+              </div>
             </div>
+            <ExportButton
+              filename={`profit-loss-${from}-${to}`}
+              pdfTitle="Profit & Loss"
+              pdfSubtitle={`${from} to ${to}`}
+              disabled={!data}
+              csvRows={data ? [
+                { Item: "Sales Revenue",           Amount: data.revenue },
+                { Item: "Cost of Goods Sold",       Amount: -data.cogs },
+                { Item: "Gross Profit",             Amount: data.grossProfit },
+                ...Object.entries(data.expenses?.breakdown ?? {}).map(([cat, amt]) => ({ Item: cat, Amount: -(amt as number) })),
+                ...(data.commissionExpense > 0 ? [{ Item: "Commission Expense", Amount: -data.commissionExpense }] : []),
+                { Item: "Total Operating Expenses", Amount: -data.operatingExpenses },
+                { Item: "Net Profit",               Amount: data.netProfit },
+              ] : undefined}
+            />
           </div>
         </Card>
 

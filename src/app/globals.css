@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@media print {
+  nav, aside, header,
+  [data-noprint],
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  main { padding: 0 !important; }
+  * { box-shadow: none !important; }
+}
