@@ -65,7 +65,7 @@ export default function LedgerPage() {
       ]),
       ["", "", "Closing Balance", data.totalDebit.toFixed(2), data.totalCredit.toFixed(2), data.closingBalance.toFixed(2)],
     ];
-    const csv = [header, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const csv = [header, ...rows].map((r) => r.map((c: string) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
