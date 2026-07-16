@@ -48,9 +48,9 @@ export default async function AccountingPage() {
                 className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 <Receipt size={15} /> Expenses
               </Link>
-              <Link href="/accounting/ledger"
+              <Link href="/finance/reports/ledger"
                 className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-                <BookOpen size={15} /> Ledger Book
+                <BookOpen size={15} /> Account Transactions
               </Link>
             </div>
           </div>
@@ -94,14 +94,14 @@ export default async function AccountingPage() {
               </div>
             </Card>
           </Link>
-          <Link href="/accounting/ledger">
+          <Link href="/finance/reports/ledger">
             <Card className="flex items-center gap-4 p-5 transition hover:shadow-md cursor-pointer">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
                 <BookOpen size={22} />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">Ledger Book</p>
-                <p className="text-sm text-slate-500">Full double-entry journal with DR / CR lines</p>
+                <p className="font-semibold text-slate-900">Account Transactions</p>
+                <p className="text-sm text-slate-500">Zoho-style ledger with running balance</p>
               </div>
             </Card>
           </Link>
