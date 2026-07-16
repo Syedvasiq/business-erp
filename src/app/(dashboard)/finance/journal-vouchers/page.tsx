@@ -220,7 +220,7 @@ export default function JournalVouchersPage() {
           </div>
           <p className="px-6 py-4 text-sm text-slate-500">
             View all journal entries in the{" "}
-            <Link href="/accounting/ledger" className="font-semibold text-sky-600 hover:underline">Ledger Book →</Link>
+            <Link href="/finance/reports/ledger" className="font-semibold text-sky-600 hover:underline">Account Transactions →</Link>
           </p>
         </Card>
 

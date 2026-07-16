@@ -37,6 +37,7 @@ import {
   BadgePercent,
   BookMarked,
   PieChart,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionUser } from "@/lib/session";
@@ -96,6 +97,7 @@ const nav: NavEntry[] = [
       { href: "/finance/reports/financial",        label: "Financial Reports",  icon: Scale,           module: "finance" },
       { href: "/finance/reports/vat-201",          label: "VAT Return 201",     icon: Receipt,         module: "finance" },
       { href: "/finance/reports/corporate-tax",    label: "Corporate Tax",      icon: BadgePercent,    module: "finance" },
+      { href: "/finance/reports/ledger",            label: "Account Transactions", icon: BookOpen,       module: "finance" },
     ],
   },
   { href: "/admin/users",       label: "User Management",      icon: ShieldCheck,     module: "users",    adminOnly: true },
