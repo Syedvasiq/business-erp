@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatAED } from "@/lib/utils";
-import { Building2, Plus, Loader2, ArrowLeft, X, Pencil, Banknote, ArrowLeftRight } from "lucide-react";
+import { Building2, Plus, Loader2, ArrowLeft, X, Pencil, ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -102,75 +102,12 @@ function AccountModal({ account, onClose, onSaved }: { account?: any; onClose: (
   );
 }
 
-function DepositModal({ account, onClose, onSaved }: { account: any; onClose: () => void; onSaved: () => void }) {
-  const today = new Date();
-  const [form, setForm] = useState({
-    amount: "",
-    date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`,
-    description: "Cash deposit",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.amount) return;
-    setSaving(true);
-    await fetch("/api/finance/bank-transactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bankAccountId: account.id, amount: Number(form.amount), type: "CREDIT", date: form.date, description: form.description }),
-    });
-    setSaving(false);
-    onSaved();
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Deposit Cash</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Into: {account.name}</p>
-          </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50"><X size={15} /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Amount (AED) *</label>
-            <input type="number" step="0.01" min="0" value={form.amount}
-              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-              placeholder="0.00" className={inputCls} autoFocus />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Date</label>
-            <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Description</label>
-            <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputCls} />
-          </div>
-          <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-            <button type="button" onClick={onClose} className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-            <button type="submit" disabled={saving || !form.amount}
-              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
-              {saving && <Loader2 size={14} className="animate-spin" />}
-              {saving ? "Saving…" : "Deposit"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 export default function BankAccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [showAdd, setShowAdd]   = useState(false);
-  const [editTarget, setEditTarget]       = useState<any>(null);
-  const [depositTarget, setDepositTarget] = useState<any>(null);
+  const [editTarget, setEditTarget] = useState<any>(null);
 
   const load = () => {
     setLoading(true);
@@ -256,13 +193,9 @@ export default function BankAccountsPage() {
                     </span>
                   </div>
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <button onClick={() => setDepositTarget(a)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">
-                    <Banknote size={14} /> Deposit Cash
-                  </button>
+                <div className="mt-4">
                   <Link href={`/finance/bank-transactions?bankAccountId=${a.id}`}
-                    className="flex flex-1 items-center justify-center rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    className="flex w-full items-center justify-center rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
                     View Transactions
                   </Link>
                 </div>
@@ -274,7 +207,6 @@ export default function BankAccountsPage() {
       </div>
 
       {showAdd && <AccountModal account={editTarget} onClose={() => { setShowAdd(false); setEditTarget(null); }} onSaved={load} />}
-      {depositTarget && <DepositModal account={depositTarget} onClose={() => setDepositTarget(null)} onSaved={load} />}
     </main>
   );
 }
