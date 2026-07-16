@@ -18,6 +18,11 @@ export async function GET(req: NextRequest) {
   if (report === "pl")             return getPL(from, to);
   if (report === "vat201")         return getVAT201(from, to);
   if (report === "ct")             return getCorporateTax(from, to);
+  if (report === "ledger") {
+    const accountId = searchParams.get("accountId");
+    if (!accountId) return NextResponse.json({ error: "accountId required" }, { status: 400 });
+    return getLedger(accountId, from, to);
+  }
 
   return NextResponse.json({ error: "Invalid report" }, { status: 400 });
 }
@@ -162,4 +167,63 @@ async function getCorporateTax(from: Date, to: Date) {
   const ctPayable     = taxableIncome * CT_RATE;
   const eligibleForSBR = netProfit <= SBR_THRESHOLD;
   return NextResponse.json({ netProfit, taxableIncome, ctPayable: eligibleForSBR ? 0 : ctPayable, eligibleForSBR, CT_FREE_THRESHOLD, CT_RATE, SBR_THRESHOLD, from, to });
+}
+
+async function getLedger(accountId: string, from: Date, to: Date) {
+  const account = await prisma.account.findUnique({ where: { id: accountId } });
+  if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
+
+  // Opening balance = all lines BEFORE the from date
+  const openingLines = await prisma.journalLine.findMany({
+    where: { accountId, journal: { date: { lt: from } } },
+    select: { type: true, aedAmount: true },
+  });
+
+  const normalDebit = account.type === "ASSET" || account.type === "EXPENSE";
+  const openingBalance = openingLines.reduce((sum, l) => {
+    const amt = Number(l.aedAmount);
+    return sum + (normalDebit ? (l.type === "DEBIT" ? amt : -amt) : (l.type === "CREDIT" ? amt : -amt));
+  }, 0);
+
+  // Lines within the date range
+  const lines = await prisma.journalLine.findMany({
+    where: { accountId, journal: { date: { gte: from, lte: to } } },
+    include: {
+      journal: { select: { id: true, reference: true, description: true, date: true } },
+    },
+    orderBy: { journal: { date: "asc" } },
+  });
+
+  // Build rows with running balance
+  let running = openingBalance;
+  const rows = lines.map((l) => {
+    const amt = Number(l.aedAmount);
+    const debit  = l.type === "DEBIT"  ? amt : 0;
+    const credit = l.type === "CREDIT" ? amt : 0;
+    if (normalDebit) running += debit - credit;
+    else             running += credit - debit;
+    return {
+      date:        l.journal.date,
+      reference:   l.journal.reference,
+      description: l.journal.description,
+      debit:       debit  > 0 ? debit  : null,
+      credit:      credit > 0 ? credit : null,
+      balance:     running,
+    };
+  });
+
+  const closingBalance = running;
+  const totalDebit  = rows.reduce((s, r) => s + (r.debit  ?? 0), 0);
+  const totalCredit = rows.reduce((s, r) => s + (r.credit ?? 0), 0);
+
+  return NextResponse.json({
+    account: { id: account.id, code: account.code, name: account.name, type: account.type },
+    openingBalance,
+    closingBalance,
+    totalDebit,
+    totalCredit,
+    rows,
+    from,
+    to,
+  });
 }

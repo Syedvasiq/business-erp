@@ -11,11 +11,16 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 const inputCls = "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20";
 
+type BankAcc = { id: string; name: string; bankName: string; currentBalance: number };
+type GlAcc   = { id: string; code: string; name: string; balance?: number };
+type Side    = { id: string; type: "bank" | "gl"; label: string; balance?: number };
+
 export default function TransferPage() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAcc[]>([]);
+  const [glAccounts, setGlAccounts]     = useState<GlAcc[]>([]);
   const [transfers, setTransfers]       = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -23,8 +28,8 @@ export default function TransferPage() {
   const [error, setError]       = useState("");
 
   const [form, setForm] = useState({
-    fromId: "",
-    toId: "",
+    fromKey: "",   // "bank:id" or "gl:id"
+    toKey: "",
     amount: "",
     date: todayStr,
     description: "Cash transfer",
@@ -35,30 +40,58 @@ export default function TransferPage() {
     Promise.all([
       fetch("/api/finance/bank-accounts").then((r) => r.json()),
       fetch("/api/finance/transfer").then((r) => r.json()),
-    ]).then(([banks, trfs]) => {
+      fetch("/api/finance/accounts").then((r) => r.json()),
+    ]).then(([banks, trfs, gls]) => {
       setBankAccounts(Array.isArray(banks) ? banks : []);
       setTransfers(Array.isArray(trfs) ? trfs : []);
+      setGlAccounts(Array.isArray(gls) ? gls : []);
       setLoading(false);
     });
   };
 
   useEffect(() => { load(); }, []);
 
-  const fromAcc = bankAccounts.find((a) => a.id === form.fromId);
-  const toAcc   = bankAccounts.find((a) => a.id === form.toId);
+  const parseKey = (key: string): { id: string; type: "bank" | "gl" } | null => {
+    if (!key) return null;
+    const [type, id] = key.split(":");
+    return { id, type: type as "bank" | "gl" };
+  };
+
+  const getSide = (key: string): Side | null => {
+    const parsed = parseKey(key);
+    if (!parsed) return null;
+    if (parsed.type === "bank") {
+      const a = bankAccounts.find((b) => b.id === parsed.id);
+      return a ? { id: a.id, type: "bank", label: `${a.name} — ${a.bankName}`, balance: a.currentBalance } : null;
+    }
+    const a = glAccounts.find((g) => g.id === parsed.id);
+    return a ? { id: a.id, type: "gl", label: `${a.code} · ${a.name}`, balance: a.balance } : null;
+  };
+
+  const fromSide = getSide(form.fromKey);
+  const toSide   = getSide(form.toKey);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!form.fromId || !form.toId) return setError("Select both accounts.");
-    if (form.fromId === form.toId) return setError("From and To accounts must be different.");
+    if (!form.fromKey || !form.toKey) return setError("Select both accounts.");
+    if (form.fromKey === form.toKey) return setError("From and To accounts must be different.");
     if (!form.amount || Number(form.amount) <= 0) return setError("Enter a valid amount.");
+
+    const from = parseKey(form.fromKey)!;
+    const to   = parseKey(form.toKey)!;
 
     setSaving(true);
     const res = await fetch("/api/finance/transfer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fromId: form.fromId, toId: form.toId, amount: Number(form.amount), date: form.date, description: form.description }),
+      body: JSON.stringify({
+        fromId: from.id, fromType: from.type,
+        toId: to.id,     toType: to.type,
+        amount: Number(form.amount),
+        date: form.date,
+        description: form.description,
+      }),
     });
     setSaving(false);
 
@@ -68,9 +101,40 @@ export default function TransferPage() {
     }
 
     setSuccess(true);
-    setForm({ fromId: "", toId: "", amount: "", date: todayStr, description: "Cash transfer" });
+    setForm({ fromKey: "", toKey: "", amount: "", date: todayStr, description: "Cash transfer" });
     setTimeout(() => setSuccess(false), 3000);
     load();
+  };
+
+  const AccountSelect = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => {
+    const side = getSide(value);
+    return (
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">{label} *</label>
+        <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls}>
+          <option value="">Select account…</option>
+          {bankAccounts.length > 0 && (
+            <optgroup label="Bank Accounts">
+              {bankAccounts.map((a) => (
+                <option key={a.id} value={`bank:${a.id}`}>{a.name} — {a.bankName}</option>
+              ))}
+            </optgroup>
+          )}
+          {glAccounts.length > 0 && (
+            <optgroup label="Chart of Accounts">
+              {glAccounts.map((a) => (
+                <option key={a.id} value={`gl:${a.id}`}>{a.code} · {a.name}</option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        {side && side.balance !== undefined && (
+          <p className="mt-1 text-xs text-slate-400">
+            Balance: <span className="font-semibold text-slate-600">{formatAED(Number(side.balance))}</span>
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -85,48 +149,19 @@ export default function TransferPage() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Bank Accounts</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Transfer Between Accounts</h1>
-              <p className="mt-0.5 text-sm text-slate-500">Move cash from one bank account to another.</p>
+              <p className="mt-0.5 text-sm text-slate-500">Move cash between bank accounts or chart of accounts.</p>
             </div>
           </div>
         </Card>
 
         <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">From Account *</label>
-                <select value={form.fromId} onChange={(e) => setForm((f) => ({ ...f, fromId: e.target.value }))} className={inputCls}>
-                  <option value="">Select account…</option>
-                  {bankAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name} — {a.bankName}</option>
-                  ))}
-                </select>
-                {fromAcc && (
-                  <p className="mt-1 text-xs text-slate-400">
-                    Balance: <span className="font-semibold text-slate-600">{formatAED(fromAcc.currentBalance ?? 0)}</span>
-                  </p>
-                )}
-              </div>
-
+              <AccountSelect label="From Account" value={form.fromKey} onChange={(v) => setForm((f) => ({ ...f, fromKey: v }))} />
               <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 self-end mx-auto">
                 <ArrowRight size={16} />
               </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">To Account *</label>
-                <select value={form.toId} onChange={(e) => setForm((f) => ({ ...f, toId: e.target.value }))} className={inputCls}>
-                  <option value="">Select account…</option>
-                  {bankAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name} — {a.bankName}</option>
-                  ))}
-                </select>
-                {toAcc && (
-                  <p className="mt-1 text-xs text-slate-400">
-                    Balance: <span className="font-semibold text-slate-600">{formatAED(toAcc.currentBalance ?? 0)}</span>
-                  </p>
-                )}
-              </div>
+              <AccountSelect label="To Account" value={form.toKey} onChange={(v) => setForm((f) => ({ ...f, toKey: v }))} />
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -147,16 +182,15 @@ export default function TransferPage() {
               <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputCls} />
             </div>
 
-            {/* Preview */}
-            {form.fromId && form.toId && form.amount && (
+            {fromSide && toSide && form.amount && (
               <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
                 Transfer <span className="font-bold">{formatAED(Number(form.amount))}</span> from{" "}
-                <span className="font-semibold">{fromAcc?.name}</span> →{" "}
-                <span className="font-semibold">{toAcc?.name}</span>
+                <span className="font-semibold">{fromSide.label}</span> →{" "}
+                <span className="font-semibold">{toSide.label}</span>
               </div>
             )}
 
-            {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
+            {error   && <p className="text-sm font-medium text-rose-600">{error}</p>}
             {success && (
               <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                 <CheckCircle2 size={16} /> Transfer posted successfully.
@@ -173,7 +207,6 @@ export default function TransferPage() {
           </form>
         </Card>
 
-        {/* Transfer history */}
         <Card className="overflow-hidden">
           <div className="border-b border-slate-200 px-6 py-4">
             <h2 className="text-base font-semibold text-slate-900">Transfer History</h2>

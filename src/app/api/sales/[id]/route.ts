@@ -240,7 +240,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const invoice = await prisma.invoice.findUniqueOrThrow({
     where: { id },
-    include: { lines: true, commissions: true },
+    include: { lines: true, commissions: true, payments: true },
   });
 
   if (invoice.status === "CANCELLED") {
@@ -249,14 +249,42 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   const cogsTotal = invoice.lines.reduce((s, l) => s + Number(l.cogsCost), 0);
 
-  // Restore stock
+  // 1. Reverse each payment: remove bank transactions (reconcile), reverse payment journal, delete payment
+  for (const payment of invoice.payments) {
+    // Remove any bank transaction linked to this payment (clears reconciliation)
+    await prisma.bankTransaction.deleteMany({ where: { reference: payment.journalRef ?? undefined } });
+
+    // Reverse the payment journal (DR 1100 AR back, CR 1000 Cash/Bank)
+    if (payment.journalRef) {
+      const revRef = `REV-${payment.journalRef}`;
+      const exists = await prisma.journal.findUnique({ where: { reference: revRef } });
+      if (!exists) {
+        await postJournal(
+          revRef,
+          `Payment reversal for ${invoice.number}`,
+          new Date(),
+          [
+            { accountCode: "1100", type: "DEBIT",  amount: Number(payment.amount) },
+            { accountCode: "1000", type: "CREDIT", amount: Number(payment.amount) },
+          ]
+        );
+      }
+    }
+
+    await prisma.payment.delete({ where: { id: payment.id } });
+  }
+
+  // 2. Restore stock
   for (const line of invoice.lines)
     await prisma.item.update({ where: { id: line.itemId }, data: { stockQty: { increment: Number(line.qty) } } });
 
+  // 3. Cancel unpaid commissions
   await prisma.commission.deleteMany({ where: { invoiceId: id, isPaid: false } });
+
+  // 4. Mark invoice cancelled
   await prisma.invoice.update({ where: { id }, data: { status: "CANCELLED" } });
 
-  // Post reversal journal — if it fails, invoice is already cancelled (acceptable; journal can be posted manually)
+  // 5. Reverse the original invoice journal (AR, VAT, Revenue, COGS, Inventory)
   const revRef = `REV-${invoice.number}`;
   const existingRev = await prisma.journal.findUnique({ where: { reference: revRef } });
   if (!existingRev) {

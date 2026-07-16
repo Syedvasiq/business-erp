@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowDownCircle, ArrowUpCircle, Users, Truck, Building2,
   TrendingUp, AlertCircle, RefreshCw, ArrowLeftRight, GitMerge, Receipt,
-  FileSpreadsheet, PieChart as PieIcon, DollarSign, Calendar, X, Package, UserCheck,
+  FileSpreadsheet, PieChart as PieIcon, DollarSign, Calendar, X, Package, UserCheck, BookOpen,
 } from "lucide-react";
 import { FinanceCharts } from "./FinanceCharts";
 
@@ -92,6 +92,7 @@ const quickLinks = [
   { href: "/finance/suppliers",           label: "Supplier Statements",  icon: Truck,            color: "text-amber-600 bg-amber-50" },
   { href: "/finance/reports/profit-loss", label: "Profit & Loss",        icon: TrendingUp,       color: "text-emerald-600 bg-emerald-50" },
   { href: "/finance/reports/financial",   label: "Financial Reports",    icon: PieIcon,          color: "text-emerald-600 bg-emerald-50" },
+  { href: "/finance/reports/ledger",      label: "Account Transactions", icon: BookOpen,         color: "text-sky-600 bg-sky-50" },
 ];
 
 const inputCls = "rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500";
