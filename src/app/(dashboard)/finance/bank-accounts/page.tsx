@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatAED } from "@/lib/utils";
-import { Building2, Plus, Loader2, ArrowLeft, X } from "lucide-react";
+import { Building2, Plus, Loader2, ArrowLeft, X, Pencil, Banknote, ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -15,20 +15,35 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 const CURRENCIES = ["AED", "USD", "EUR", "GBP", "SAR"];
 
-function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: "", bankName: "", accountNumber: "", currency: "AED", openingBalance: "" });
+const inputCls = "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20";
+
+function AccountModal({ account, onClose, onSaved }: { account?: any; onClose: () => void; onSaved: () => void }) {
+  const isEdit = !!account;
+  const [form, setForm] = useState({
+    name: account?.name ?? "",
+    bankName: account?.bankName ?? "",
+    accountNumber: account?.accountNumber ?? "",
+    currency: account?.currency ?? "AED",
+    openingBalance: account?.openingBalance ?? "",
+  });
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.bankName) return setError("Account name and bank name are required.");
     setSaving(true);
-    const res = await fetch("/api/finance/bank-accounts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, openingBalance: Number(form.openingBalance) || 0 }),
-    });
+    const res = isEdit
+      ? await fetch(`/api/finance/bank-accounts/${account.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: form.name, bankName: form.bankName, accountNumber: form.accountNumber }),
+        })
+      : await fetch("/api/finance/bank-accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...form, openingBalance: Number(form.openingBalance) || 0 }),
+        });
     setSaving(false);
     if (!res.ok) return setError("Failed to save.");
     onSaved();
@@ -40,45 +55,108 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-900">Add Bank Account</h2>
+          <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit Bank Account" : "Add Bank Account"}</h2>
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50"><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {[
-            { label: "Account Name *", key: "name", placeholder: "e.g. Emirates NBD Current" },
-            { label: "Bank Name *",    key: "bankName", placeholder: "e.g. Emirates NBD" },
-            { label: "Account Number", key: "accountNumber", placeholder: "e.g. 1234567890" },
+            { label: "Account Name *", key: "name",          placeholder: "e.g. Emirates NBD Current" },
+            { label: "Bank Name *",    key: "bankName",       placeholder: "e.g. Emirates NBD" },
+            { label: "Account Number", key: "accountNumber",  placeholder: "e.g. 1234567890" },
           ].map(({ label, key, placeholder }) => (
             <div key={key}>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
               <input value={(form as any)[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                placeholder={placeholder}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20" />
+                placeholder={placeholder} className={inputCls} />
             </div>
           ))}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Currency</label>
-              <select value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400">
-                {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
-              </select>
+          {!isEdit && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Currency</label>
+                <select value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400">
+                  {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Opening Balance</label>
+                <input type="number" step="0.01" min="0" value={form.openingBalance}
+                  onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
+                  placeholder="0.00" className={inputCls} />
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Opening Balance</label>
-              <input type="number" step="0.01" min="0" value={form.openingBalance}
-                onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
-                placeholder="0.00"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" />
-            </div>
-          </div>
+          )}
           {error && <p className="text-sm text-rose-600">{error}</p>}
           <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
             <button type="button" onClick={onClose} className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
             <button type="submit" disabled={saving}
               className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {saving ? "Saving…" : "Add Account"}
+              {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Account"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DepositModal({ account, onClose, onSaved }: { account: any; onClose: () => void; onSaved: () => void }) {
+  const today = new Date();
+  const [form, setForm] = useState({
+    amount: "",
+    date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`,
+    description: "Cash deposit",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.amount) return;
+    setSaving(true);
+    await fetch("/api/finance/bank-transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bankAccountId: account.id, amount: Number(form.amount), type: "CREDIT", date: form.date, description: form.description }),
+    });
+    setSaving(false);
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Deposit Cash</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Into: {account.name}</p>
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50"><X size={15} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Amount (AED) *</label>
+            <input type="number" step="0.01" min="0" value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              placeholder="0.00" className={inputCls} autoFocus />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Date</label>
+            <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Description</label>
+            <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputCls} />
+          </div>
+          <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+            <button type="button" onClick={onClose} className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button type="submit" disabled={saving || !form.amount}
+              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              {saving ? "Saving…" : "Deposit"}
             </button>
           </div>
         </form>
@@ -91,6 +169,8 @@ export default function BankAccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [showAdd, setShowAdd]   = useState(false);
+  const [editTarget, setEditTarget]       = useState<any>(null);
+  const [depositTarget, setDepositTarget] = useState<any>(null);
 
   const load = () => {
     setLoading(true);
@@ -117,10 +197,16 @@ export default function BankAccountsPage() {
                 <p className="mt-0.5 text-sm text-slate-500">{accounts.length} accounts · Total {formatAED(totalBalance)}</p>
               </div>
             </div>
-            <button onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-              <Plus size={15} /> Add Bank Account
-            </button>
+            <div className="flex items-center gap-2">
+              <Link href="/finance/transfer"
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                <ArrowLeftRight size={15} /> Transfer
+              </Link>
+              <button onClick={() => { setEditTarget(null); setShowAdd(true); }}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                <Plus size={15} /> Add Bank Account
+              </button>
+            </div>
           </div>
         </Card>
 
@@ -146,7 +232,13 @@ export default function BankAccountsPage() {
                     <p className="text-sm text-slate-500">{a.bankName}</p>
                     {a.accountNumber && <p className="font-mono text-xs text-slate-400 mt-0.5">{a.accountNumber}</p>}
                   </div>
-                  <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{a.currency}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{a.currency}</span>
+                    <button onClick={() => { setEditTarget(a); setShowAdd(true); }}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+                      <Pencil size={12} />
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
@@ -164,10 +256,16 @@ export default function BankAccountsPage() {
                     </span>
                   </div>
                 </div>
-                <Link href={`/finance/bank-transactions?bankAccountId=${a.id}`}
-                  className="mt-4 flex w-full items-center justify-center rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                  View Transactions
-                </Link>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => setDepositTarget(a)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">
+                    <Banknote size={14} /> Deposit Cash
+                  </button>
+                  <Link href={`/finance/bank-transactions?bankAccountId=${a.id}`}
+                    className="flex flex-1 items-center justify-center rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    View Transactions
+                  </Link>
+                </div>
               </Card>
             ))}
           </div>
@@ -175,7 +273,8 @@ export default function BankAccountsPage() {
 
       </div>
 
-      {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={load} />}
+      {showAdd && <AccountModal account={editTarget} onClose={() => { setShowAdd(false); setEditTarget(null); }} onSaved={load} />}
+      {depositTarget && <DepositModal account={depositTarget} onClose={() => setDepositTarget(null)} onSaved={load} />}
     </main>
   );
 }

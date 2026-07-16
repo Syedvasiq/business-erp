@@ -96,7 +96,22 @@ export default function CashFlowPage() {
                   <div className="bg-sky-50 px-5 py-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">Investing Activities</p>
                   </div>
-                  <div className="px-5 py-4 text-sm text-slate-400 text-center">No investing activities recorded</div>
+                  {data.investing.items?.length > 0 ? (
+                    <div className="divide-y divide-slate-100 px-5">
+                      {data.investing.items.map((item: any, i: number) => (
+                        <div key={i} className="flex justify-between py-2.5 text-sm">
+                          <span className="text-slate-600">{item.description}</span>
+                          <span className={`font-semibold tabular-nums ${item.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{item.amount >= 0 ? "+" : "−"}{formatAED(Math.abs(item.amount))}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between py-3 text-sm font-bold border-t-2 border-slate-200">
+                        <span className="text-slate-800">Net Investing Cash Flow</span>
+                        <span className={`tabular-nums ${data.investing.net >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatAED(data.investing.net)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-5 py-4 text-sm text-slate-400 text-center">No investing activities recorded</div>
+                  )}
                 </div>
 
                 {/* Financing */}
@@ -104,7 +119,22 @@ export default function CashFlowPage() {
                   <div className="bg-violet-50 px-5 py-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-700">Financing Activities</p>
                   </div>
-                  <div className="px-5 py-4 text-sm text-slate-400 text-center">No financing activities recorded</div>
+                  {data.financing.items?.length > 0 ? (
+                    <div className="divide-y divide-slate-100 px-5">
+                      {data.financing.items.map((item: any, i: number) => (
+                        <div key={i} className="flex justify-between py-2.5 text-sm">
+                          <span className="text-slate-600">{item.description}</span>
+                          <span className={`font-semibold tabular-nums ${item.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{item.amount >= 0 ? "+" : "−"}{formatAED(Math.abs(item.amount))}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between py-3 text-sm font-bold border-t-2 border-slate-200">
+                        <span className="text-slate-800">Net Financing Cash Flow</span>
+                        <span className={`tabular-nums ${data.financing.net >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatAED(data.financing.net)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-5 py-4 text-sm text-slate-400 text-center">No financing activities recorded</div>
+                  )}
                 </div>
 
                 {/* Net */}

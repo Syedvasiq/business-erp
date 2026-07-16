@@ -67,7 +67,7 @@ async function getBalanceSheet() {
 
   const assetRows      = assets.map((a) => ({ code: a.code, name: a.name, balance: getBalance(a) }));
   const liabilityRows  = liabilities.map((a) => ({ code: a.code, name: a.name, balance: getBalance(a) }));
-  const equityRows     = equity.map((a) => ({ code: a.code, name: a.name, balance: getBalance(a) }));
+  const equityRows     = equity.filter((a) => a.code !== "3100").map((a) => ({ code: a.code, name: a.name, balance: getBalance(a) }));
 
   const totalAssets      = assetRows.reduce((s, r) => s + r.balance, 0);
   const totalLiabilities = liabilityRows.reduce((s, r) => s + r.balance, 0);

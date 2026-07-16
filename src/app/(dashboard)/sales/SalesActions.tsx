@@ -836,6 +836,7 @@ export function SalesStatusButton({
   const [payOpen, setPayOpen]   = useState(false);
   const [loading, setLoading]   = useState(false);
   const [balanceDue, setBalanceDue] = useState<number | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const router = useRouter();
 
   const { register, handleSubmit, watch, reset, setValue, formState: { isSubmitting } } = useForm<PaymentForm>({
@@ -850,14 +851,16 @@ export function SalesStatusButton({
 
   useEffect(() => {
     if (!payOpen) return;
-    fetch(`/api/sales/${invoiceId}`)
-      .then((r) => r.json())
-      .then((inv) => {
-        const paid = (inv.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
-        const due  = Math.max(0, Number(inv.totalAed) - paid);
-        setBalanceDue(due);
-        setValue("amount", due.toFixed(2));
-      });
+    Promise.all([
+      fetch(`/api/sales/${invoiceId}`).then((r) => r.json()),
+      fetch("/api/finance/bank-accounts").then((r) => r.json()),
+    ]).then(([inv, banks]) => {
+      const paid = (inv.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+      const due  = Math.max(0, Number(inv.totalAed) - paid);
+      setBalanceDue(due);
+      setValue("amount", due.toFixed(2));
+      setBankAccounts(banks ?? []);
+    });
   }, [payOpen]);
 
   const method   = watch("method");
@@ -1008,8 +1011,17 @@ export function SalesStatusButton({
             {method === "BANK_TRANSFER" && (
               <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Bank Transfer Details</p>
-                <Input label="Bank Name *" placeholder="e.g. Emirates NBD" {...register("bankName")} />
-                <Input label="Transaction / Reference ID *" placeholder="TXN123456" {...register("transactionId")} />
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Bank Account *</label>
+                  <select {...register("bankName")}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20">
+                    <option value="">Select bank account…</option>
+                    {bankAccounts.map((b) => (
+                      <option key={b.id} value={b.name}>{b.name} — {b.bankName}</option>
+                    ))}
+                  </select>
+                </div>
+                <Input label="Transaction / Reference ID" placeholder="TXN123456" {...register("transactionId")} />
               </div>
             )}
 
