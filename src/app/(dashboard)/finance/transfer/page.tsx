@@ -15,60 +15,50 @@ export default function TransferPage() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [transfers, setTransfers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [transfers, setTransfers]       = useState<any[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [success, setSuccess]   = useState(false);
+  const [error, setError]       = useState("");
 
   const [form, setForm] = useState({
-    fromAccountId: "",
-    toAccountId: "",
+    fromId: "",
+    toId: "",
     amount: "",
     date: todayStr,
-    description: "Account transfer",
+    description: "Cash transfer",
   });
 
   const load = () => {
     setLoading(true);
     Promise.all([
-      fetch("/api/accounting/journal?accounts=1").then((r) => r.json()),
-      fetch("/api/accounting/journal").then((r) => r.json()),
-    ]).then(([accs, jnls]) => {
-      setAccounts(Array.isArray(accs) ? accs : []);
-      // filter only transfers we posted (reference starts with TRF-)
-      setTransfers(Array.isArray(jnls) ? jnls.filter((j: any) => j.reference?.startsWith("TRF-")) : []);
+      fetch("/api/finance/bank-accounts").then((r) => r.json()),
+      fetch("/api/finance/transfer").then((r) => r.json()),
+    ]).then(([banks, trfs]) => {
+      setBankAccounts(Array.isArray(banks) ? banks : []);
+      setTransfers(Array.isArray(trfs) ? trfs : []);
       setLoading(false);
     });
   };
 
   useEffect(() => { load(); }, []);
 
-  const fromAcc = accounts.find((a) => a.id === form.fromAccountId);
-  const toAcc   = accounts.find((a) => a.id === form.toAccountId);
+  const fromAcc = bankAccounts.find((a) => a.id === form.fromId);
+  const toAcc   = bankAccounts.find((a) => a.id === form.toId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!form.fromAccountId || !form.toAccountId) return setError("Select both accounts.");
-    if (form.fromAccountId === form.toAccountId) return setError("From and To accounts must be different.");
+    if (!form.fromId || !form.toId) return setError("Select both accounts.");
+    if (form.fromId === form.toId) return setError("From and To accounts must be different.");
     if (!form.amount || Number(form.amount) <= 0) return setError("Enter a valid amount.");
 
     setSaving(true);
-    const reference = `TRF-${Date.now()}`;
-    const res = await fetch("/api/accounting/journal", {
+    const res = await fetch("/api/finance/transfer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference,
-        description: form.description || "Account transfer",
-        date: form.date,
-        lines: [
-          { accountId: form.toAccountId,   type: "DEBIT",  amount: Number(form.amount) },
-          { accountId: form.fromAccountId, type: "CREDIT", amount: Number(form.amount) },
-        ],
-      }),
+      body: JSON.stringify({ fromId: form.fromId, toId: form.toId, amount: Number(form.amount), date: form.date, description: form.description }),
     });
     setSaving(false);
 
@@ -78,7 +68,7 @@ export default function TransferPage() {
     }
 
     setSuccess(true);
-    setForm({ fromAccountId: "", toAccountId: "", amount: "", date: todayStr, description: "Account transfer" });
+    setForm({ fromId: "", toId: "", amount: "", date: todayStr, description: "Cash transfer" });
     setTimeout(() => setSuccess(false), 3000);
     load();
   };
@@ -89,13 +79,13 @@ export default function TransferPage() {
 
         <Card className="p-5 sm:p-6">
           <div className="flex items-center gap-4">
-            <Link href="/finance/dashboard" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+            <Link href="/finance/bank-accounts" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
               <ArrowLeft size={16} />
             </Link>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Finance · Bank Accounts</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Transfer Between Accounts</h1>
-              <p className="mt-0.5 text-sm text-slate-500">Move funds from one account to another — posts a balanced journal entry automatically.</p>
+              <p className="mt-0.5 text-sm text-slate-500">Move cash from one bank account to another.</p>
             </div>
           </div>
         </Card>
@@ -103,17 +93,20 @@ export default function TransferPage() {
         <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* From → To */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr]  sm:items-end">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">From Account *</label>
-                <select value={form.fromAccountId} onChange={(e) => setForm((f) => ({ ...f, fromAccountId: e.target.value }))} className={inputCls}>
+                <select value={form.fromId} onChange={(e) => setForm((f) => ({ ...f, fromId: e.target.value }))} className={inputCls}>
                   <option value="">Select account…</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                  {bankAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name} — {a.bankName}</option>
                   ))}
                 </select>
-                {fromAcc && <p className="mt-1 text-xs text-slate-400">{fromAcc.type}</p>}
+                {fromAcc && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Balance: <span className="font-semibold text-slate-600">{formatAED(fromAcc.currentBalance ?? 0)}</span>
+                  </p>
+                )}
               </div>
 
               <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 self-end mx-auto">
@@ -122,13 +115,17 @@ export default function TransferPage() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">To Account *</label>
-                <select value={form.toAccountId} onChange={(e) => setForm((f) => ({ ...f, toAccountId: e.target.value }))} className={inputCls}>
+                <select value={form.toId} onChange={(e) => setForm((f) => ({ ...f, toId: e.target.value }))} className={inputCls}>
                   <option value="">Select account…</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                  {bankAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name} — {a.bankName}</option>
                   ))}
                 </select>
-                {toAcc && <p className="mt-1 text-xs text-slate-400">{toAcc.type}</p>}
+                {toAcc && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Balance: <span className="font-semibold text-slate-600">{formatAED(toAcc.currentBalance ?? 0)}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -151,7 +148,7 @@ export default function TransferPage() {
             </div>
 
             {/* Preview */}
-            {form.fromAccountId && form.toAccountId && form.amount && (
+            {form.fromId && form.toId && form.amount && (
               <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
                 Transfer <span className="font-bold">{formatAED(Number(form.amount))}</span> from{" "}
                 <span className="font-semibold">{fromAcc?.name}</span> →{" "}
@@ -190,26 +187,22 @@ export default function TransferPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
-                    {["Date", "Reference", "Description", "From", "To", "Amount"].map((h) => (
+                    {["Date", "Reference", "From", "To", "Description", "Amount"].map((h) => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {transfers.map((t) => {
-                    const cr  = t.lines?.find((l: any) => l.type === "CREDIT");
-                    const dr  = t.lines?.find((l: any) => l.type === "DEBIT");
-                    return (
-                      <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/80">
-                        <td className="px-5 py-3 text-slate-500">{new Date(t.date).toLocaleDateString("en-AE")}</td>
-                        <td className="px-5 py-3 font-mono text-xs text-slate-400">{t.reference}</td>
-                        <td className="px-5 py-3 text-slate-700">{t.description}</td>
-                        <td className="px-5 py-3 text-slate-600">{cr?.account?.name ?? "—"}</td>
-                        <td className="px-5 py-3 text-slate-600">{dr?.account?.name ?? "—"}</td>
-                        <td className="px-5 py-3 font-semibold tabular-nums text-slate-900">{formatAED(Number(cr?.aedAmount ?? 0))}</td>
-                      </tr>
-                    );
-                  })}
+                  {transfers.map((t) => (
+                    <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                      <td className="px-5 py-3 text-slate-500">{new Date(t.date).toLocaleDateString("en-AE")}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-slate-400">{t.reference}</td>
+                      <td className="px-5 py-3 text-slate-600">{t.fromAccount?.name ?? "—"}</td>
+                      <td className="px-5 py-3 text-slate-600">{t.toAccount?.name ?? "—"}</td>
+                      <td className="px-5 py-3 text-slate-700">{t.description}</td>
+                      <td className="px-5 py-3 font-semibold tabular-nums text-slate-900">{formatAED(Number(t.amount))}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

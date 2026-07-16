@@ -197,6 +197,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
 
+    // If bank transfer, credit the matching bank account balance
+    if (body.payment?.method === "BANK_TRANSFER" && body.payment?.bankName) {
+      const bankAcc = await prisma.bankAccount.findFirst({
+        where: { name: body.payment.bankName },
+      });
+      if (bankAcc) {
+        await prisma.bankTransaction.create({
+          data: {
+            bankAccountId: bankAcc.id,
+            date: body.payment?.date ? new Date(body.payment.date) : new Date(),
+            description: `Payment received — Invoice ${invoice.number}`,
+            amount: paymentAmount,
+            type: "CREDIT",
+            reference: journalRef,
+          },
+        });
+      }
+    }
+
     journals.push({
       ref: journalRef,
       desc: `Payment received for ${invoice.number} via ${body.payment?.method ?? "CASH"}`,
